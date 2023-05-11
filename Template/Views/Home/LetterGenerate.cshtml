@@ -1,0 +1,804 @@
+﻿<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8" />
+    <title></title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.0/html2canvas.min.js"></script>
+
+    <script type="text/javascript" src="https://code.jquery.com/jquery-1.7.1.min.js"></script>
+    <script src="https://cdn.datatables.net/1.10.25/js/jquery.dataTables.min.js"></script>
+    <link rel="stylesheet" href="~/css/site.css" />
+    <script src="~/js/plugin.js"></script>
+</head>
+<style>
+    
+    #loader {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(0, 0, 0, 0.5);
+        z-index: 9999;
+        display: none;
+    }
+
+    .loader-content {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        text-align: center;
+    }
+
+    .loader {
+        border: 16px solid #f3f3f3;
+        border-top: 16px solid #3498db;
+        border-radius: 50%;
+        width: 120px;
+        height: 120px;
+        animation: spin 2s linear infinite;
+        margin-bottom: 16px;
+    }
+
+    .loader-text {
+        font-size: 24px;
+        color: white;
+    }
+
+    @@keyframes spin {
+        0% {
+            transform: rotate(0deg);
+        }
+
+        100% {
+            transform: rotate(360deg);
+        }
+    }
+
+
+    /* Define styles for the table */
+    table {
+        border-collapse: collapse;
+        width: 100%;
+    }
+
+    th, td {
+        padding: 8px;
+        text-align: left;
+        border-bottom: 1px solid #ddd;
+    }
+
+    th {
+        background-color: #f2f2f2;
+        color: #333;
+    }
+
+    .modal {
+        position: fixed;
+        z-index: 9999;
+        left: 0;
+        top: 0;
+        width: 100%;
+        height: 100%;
+        overflow: auto;
+        background-color: rgba(0, 0, 0, 0.5);
+    }
+
+        .modal iframe {
+            display: block;
+            margin: 0 auto;
+            width: 90%;
+            height: calc(100% - 60px);
+            max-width: 800px;
+            max-height: 600px;
+            background-color: #fff;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+
+    table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-bottom: 20px;
+    }
+
+    th, td {
+        border: 1px solid #ccc;
+        padding: 8px;
+        text-align: left;
+    }
+
+        th:first-child,
+        th:nth-child(2),
+        td:first-child,
+        td:nth-child(2) {
+            position: sticky;
+            top: 0;
+            z-index: 1;
+            background-color: #fff;
+        }
+
+        th:first-child,
+        td:first-child {
+            left: 0;
+        }
+
+        th:nth-child(2),
+        td:nth-child(2) {
+            left: 100px; 
+        }
+
+    @@media screen and (max-width: 767px) {
+        table {
+            display: block;
+        }
+
+        tr {
+            display: block;
+            margin-bottom: 20px;
+        }
+
+        td:before {
+            content: attr(data-label);
+            display: inline-block;
+            font-weight: bold;
+            margin-right: 5px;
+        }
+
+        td {
+            display: block;
+            text-align: right;
+            
+        }
+       
+    }
+
+</style>
+
+
+<body>
+    <form id="myForm" method="post" enctype="multipart/form-data">
+        <input type="file" id="fileInput" name="fileInput" style="margin-top: 13px;width: 235px;margin-left: 32px; display:none">
+        <button type="submit" class="btn-primary" style="margin-top: 11px;margin-left: -6px; display:none">Upload</button>
+        <label style="margin-left: 453px;">Select TemplateName: </label>
+        <label style="margin-left: -574px;">Page Orientation: </label>
+        <select class="form-control" type="text" id="ModuleName" name="ModuleName" style="margin-top: -34px;margin-left: 625px;width: 251px;">
+            @if (ViewBag.ListOfTemplates != null)
+            {
+                @foreach (var item in ViewBag.ListOfTemplates)
+                {
+                    string fileName = System.IO.Path.GetFileNameWithoutExtension(item);
+                    string passwordFilePath = $@"wwwroot\TemplateSavedPasswords\{fileName}.txt";
+
+                    if (System.IO.File.Exists(passwordFilePath))
+                    {
+                        <option value="@fileName" data-has-password="true" style="color:green">@fileName (password set)</option>
+                    }
+                    else
+                    {
+                        <option value="@fileName" data-has-password="false" style="color:brown">@fileName (password not set)</option>
+                    }
+                }}
+        </select>
+
+        <select class="form-control" type="text" id="pageOrientation" name="pageOrientation" style="margin-top: -38px;margin-left: 180px;width: 251px;">
+            <option>Portrait</option>
+            <option>Landscape</option>
+        </select>
+        <a id="print-all-link" onclick="doPrint(this,'@Url.Action("print","Home")')"><img src="~/icons/print.jpg" style="height: 37px;margin-left: 907px;" />Create Pdf</a>
+
+        <div id="loader">
+            <div class="loader-content">
+                <div class="loader"></div>
+                <div class="loader-text">Loading...</div>
+            </div>
+        </div>
+        <div style="width: 1283px; overflow-x: auto;">
+            
+            <table id="myTable" style="width: max-content;">
+                <thead>
+                    <tr>
+                        <th>Actions</th>
+                        <th><input type="checkbox" id="selectedIds" name="chkSelected" /></th>
+                        <th contentEditable="true">Letter Date</th>
+                        <th contentEditable="true">EMP First Name</th>
+                        <th contentEditable="true">EMP Middle Name</th>
+                        <th contentEditable="true">EMP Last Name</th>
+                        <th contentEditable="true">Employee ID/Code</th>
+                        <th contentEditable="true">DOC</th>
+                        <th contentEditable="true">DOJYear</th>
+                        <th contentEditable="true">DOJ</th>
+                        <th contentEditable="true">Designation</th>
+                        <th contentEditable="true">RCS Grade</th>
+                        <th contentEditable="true">Monthly Basic</th>
+                        <th contentEditable="true">Monthly Special</th>
+                        <th contentEditable="true">Annual Wage Supplement Monthly</th>
+                        <th contentEditable="true">Annual Base Salary Monthly</th>
+                        <th contentEditable="true">New Basic</th>
+                        <th contentEditable="true">New Special</th>
+                        <th contentEditable="true">Annual Wage Supplement</th>
+                        <th contentEditable="true">Annual Base Salary</th>
+                        <th contentEditable="true">Address</th>
+                        <th contentEditable="true">Target Bonus</th>
+                        <th contentEditable="true">New PF</th>
+                        <th contentEditable="true">Pan Number</th>
+
+
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>                            
+                            <a id="myLink" class="pdf-link" onclick="doIt(this,'@Url.Action("pdf", "Home")')"><img src="~/icons/view.jpg" style="height: 31px;" /></a> |
+                            <a id="myLink" class="print-link" onclick="doPrint(this,'@Url.Action("print","Home")')"><img src="~/icons/pdf.png" style="height: 37px;" /></a>
+                        </td>
+                        <td><input type="checkbox" name="chkSelected" value="1" /></td>
+                        <td contentEditable="true">
+                            30-03-2023
+                        </td>
+                        <td contentEditable="true">
+                            Alexandra
+                        </td>
+                        <td contentEditable="true">
+                            Elizabeth
+                        </td>
+                        <td contentEditable="true">
+                            Grace
+                        </td>
+                        <td contentEditable="true">
+                            I5469
+                        </td>
+                        <td contentEditable="true">
+                            12-04-2023
+                        </td>
+
+                        <td contentEditable="true">2023</td>
+                        <td contentEditable="true">24-04-2023</td>
+                        <td contentEditable="true">Senior Software Engineer</td>
+                        <td contentEditable="true">Grade A</td>
+                        <td contentEditable="true">45,000</td>
+                        <td contentEditable="true">10,000</td>
+                        <td contentEditable="true">5000</td>
+                        <td contentEditable="true">3000</td>
+                        <td contentEditable="true">40,000</td>
+                        <td contentEditable="true">25,000</td>
+                        <td contentEditable="true">20,0000</td>
+                        <td contentEditable="true">5,00,000</td>
+                        <td contenteditable="true">1234 Elm Street, Suite 5678, North Building, West Wing, Downtown Business Center, Anytown USA 12345</td>
+
+                        <td contentEditable="true">10,000</td>
+                        <td contentEditable="true">5000</td>
+                        <td contentEditable="true">DVBPR5673J</td>
+                       
+
+                    </tr>
+
+                    <tr>
+                        <td>                            
+                            <a id="myLink" class="pdf-link" onclick="doIt(this,'@Url.Action("pdf", "Home")')"><img src="~/icons/view.jpg" style="height: 31px;" /></a> |
+                            <a id="myLink" class="print-link" onclick="doPrint(this,'@Url.Action("print","Home")')"><img src="~/icons/pdf.png" style="height: 37px;" /></a>                            
+                        </td>
+                        <td><input type="checkbox" name="chkSelected" value="2" /></td>
+                        <td contentEditable="true">
+                            30-03-2023
+                        </td>
+                        <td contentEditable="true">
+                            Benjamin
+                        </td>
+                        <td contentEditable="true">
+                            Nathaniel
+                        </td>
+                        <td contentEditable="true">
+                            James
+                        </td>
+                        <td contentEditable="true">
+                            I5470
+                        </td>
+                        <td contentEditable="true">
+                            06-05-2023
+                        </td>
+
+                        <td contentEditable="true">2023</td>
+                        <td contentEditable="true">24-04-2023</td>
+                        <td contentEditable="true">Lead Software Developer</td>
+                        <td contentEditable="true">Grade A</td>
+                        <td contentEditable="true">45,000</td>
+                        <td contentEditable="true">10,000</td>
+                        <td contentEditable="true">5000</td>
+                        <td contentEditable="true">3000</td>
+                        <td contentEditable="true">40,000</td>
+                        <td contentEditable="true">25,000</td>
+                        <td contentEditable="true">20,0000</td>
+                        <td contentEditable="true">5,00,000</td>
+                        <td contenteditable="true">9876 Oak Avenue, Apartment 456, Block C, Spring Valley Complex, Cityville USA 54321</td>
+                        <td contentEditable="true">10,000</td>
+                        <td contentEditable="true">5000</td>
+                        <td contentEditable="true">RGVPR3923M</td>
+
+                        
+                    </tr>
+
+                    <tr>
+                        <td>                            
+                            <a id="myLink" class="pdf-link" onclick="doIt(this,'@Url.Action("pdf", "Home")')"><img src="~/icons/view.jpg" style="height: 31px;" /></a> |
+                            <a id="myLink" class="print-link" onclick="doPrint(this,'@Url.Action("print","Home")')"><img src="~/icons/pdf.png" style="height: 37px;" /></a>                            
+                        </td>
+                        <td><input type="checkbox" name="chkSelected" value="" /></td>
+                        <td contentEditable="true">
+                            30-03-2023
+                        </td>
+                        <td contentEditable="true">
+                            Charlotte
+                        </td>
+                        <td contentEditable="true">
+                            Emilia
+                        </td>
+                        <td contentEditable="true">
+                            Rose
+                        </td>
+                        <td contentEditable="true">
+                            I5471
+                        </td>
+                        <td contentEditable="true">
+                            17-06-2023
+                        </td>
+
+                        <td contentEditable="true">2023</td>
+                        <td contentEditable="true">24-04-2023</td>
+                        <td contentEditable="true">Software Architect</td>
+                        <td contentEditable="true">Grade A</td>
+                        <td contentEditable="true">45,000</td>
+                        <td contentEditable="true">10,000</td>
+                        <td contentEditable="true">5000</td>
+                        <td contentEditable="true">3000</td>
+                        <td contentEditable="true">40,000</td>
+                        <td contentEditable="true">25,000</td>
+                        <td contentEditable="true">20,0000</td>
+                        <td contentEditable="true">5,00,000</td>
+                        <td contenteditable="true">456 Elm Street, Unit 123, Highrise Towers, Smallville USA 67890</td>
+                        <td contentEditable="true">10,000</td>
+                        <td contentEditable="true">5000</td>
+                        <td contentEditable="true">KVRPR3212L</td>
+
+                        
+                    </tr>
+
+                    <tr>
+                        <td>                            
+                            <a id="myLink" class="pdf-link" onclick="doIt(this,'@Url.Action("pdf", "Home")')"><img src="~/icons/view.jpg" style="height: 31px;" /></a> |
+                            <a id="myLink" class="print-link" onclick="doPrint(this,'@Url.Action("print","Home")')"><img src="~/icons/pdf.png" style="height: 37px;" /></a>                            
+                        </td>
+                        <td><input type="checkbox" name="chkSelected" value="" /></td>
+                        <td contentEditable="true">
+                            30-03-2023
+                        </td>
+                        <td contentEditable="true">
+                            Dominic
+                        </td>
+                        <td contentEditable="true">
+                            Alexander
+                        </td>
+                        <td contentEditable="true">
+                            William
+                        </td>
+                        <td contentEditable="true">
+                            I5472
+                        </td>
+                        <td contentEditable="true">
+                            04-07-2023
+                        </td>
+
+                        <td contentEditable="true">2023</td>
+                        <td contentEditable="true">24-04-2023</td>
+                        <td contentEditable="true">Technical Lead</td>
+                        <td contentEditable="true">Grade A</td>
+                        <td contentEditable="true">45,000</td>
+                        <td contentEditable="true">10,000</td>
+                        <td contentEditable="true">5000</td>
+                        <td contentEditable="true">3000</td>
+                        <td contentEditable="true">40,000</td>
+                        <td contentEditable="true">25,000</td>
+                        <td contentEditable="true">20,0000</td>
+                        <td contentEditable="true">5,00,000</td>
+                        <td contenteditable="true">789 Pine Road, Building 246, Industrial Park, Countryside USA 13579</td>
+                        <td contentEditable="true">10,000</td>
+                        <td contentEditable="true">5000</td>
+                        <td contentEditable="true">LVCPR3222J</td>
+
+                        
+                    </tr>
+
+                    <tr>
+                        <td>                            
+                            <a id="myLink" class="pdf-link" onclick="doIt(this,'@Url.Action("pdf", "Home")')"><img src="~/icons/view.jpg" style="height: 31px;" /></a> |
+                            <a id="myLink" class="print-link" onclick="doPrint(this,'@Url.Action("print","Home")')"><img src="~/icons/pdf.png" style="height: 37px;" /></a>                           
+                        </td>
+                        <td><input type="checkbox" name="chkSelected" value="" /></td>
+                        <td contentEditable="true">
+                            30-03-2023
+                        </td>
+                        <td contentEditable="true">
+                            Elizabeth
+                        </td>
+                        <td contentEditable="true">
+                            Victoria
+                        </td>
+                        <td contentEditable="true">
+                            Grace
+                        </td>
+                        <td contentEditable="true">
+                            I5478
+                        </td>
+                        <td contentEditable="true">
+                            29-04-2023
+                        </td>
+
+                        <td contentEditable="true">2023</td>
+                        <td contentEditable="true">24-04-2023</td>
+                        <td contentEditable="true">Senior Systems Engineer</td>
+                        <td contentEditable="true">Grade A</td>
+                        <td contentEditable="true">45,000</td>
+                        <td contentEditable="true">10,000</td>
+                        <td contentEditable="true">5000</td>
+                        <td contentEditable="true">3000</td>
+                        <td contentEditable="true">40,000</td>
+                        <td contentEditable="true">25,000</td>
+                        <td contentEditable="true">20,0000</td>
+                        <td contentEditable="true">5,00,000</td>
+                        <td contenteditable="true">2468 Cedar Lane, Floor 5, East Wing, Mountainview Corporate Center, Mountainview USA 86420</td>
+                        <td contentEditable="true">10,000</td>
+                        <td contentEditable="true">5000</td>
+                        <td contentEditable="true">KVRGR2213M</td>
+
+                        
+                    </tr>
+
+                    <tr>
+                        <td>                            
+                            <a id="myLink" class="pdf-link" onclick="doIt(this,'@Url.Action("pdf", "Home")')"><img src="~/icons/view.jpg" style="height: 31px;" /></a> |
+                            <a id="myLink" class="print-link" onclick="doPrint(this,'@Url.Action("print","Home")')"><img src="~/icons/pdf.png" style="height: 37px;" /></a>                            
+                        </td>
+                        <td><input type="checkbox" name="chkSelected" value="" /></td>
+                        <td contentEditable="true">
+                            30-03-2023
+                        </td>
+                        <td contentEditable="true">
+                            Frederick
+                        </td>
+                        <td contentEditable="true">
+                            Maximilian
+                        </td>
+                        <td contentEditable="true">
+                            George
+                        </td>
+                        <td contentEditable="true">
+                            I5476
+                        </td>
+                        <td contentEditable="true">
+                            21-05-2023
+                        </td>
+
+                        <td contentEditable="true">2023</td>
+                        <td contentEditable="true">24-04-2023</td>
+                        <td contentEditable="true">Solutions Architect</td>
+                        <td contentEditable="true">Grade A</td>
+                        <td contentEditable="true">45,000</td>
+                        <td contentEditable="true">10,000</td>
+                        <td contentEditable="true">5000</td>
+                        <td contentEditable="true">3000</td>
+                        <td contentEditable="true">40,000</td>
+                        <td contentEditable="true">25,000</td>
+                        <td contentEditable="true">20,0000</td>
+                        <td contentEditable="true">5,00,000</td>
+                        <td contenteditable="true">1357 Birch Drive, Room 24680, South Building, Seaside Convention Center, Seaside USA 24680</td>
+                        <td contentEditable="true">10,000</td>
+                        <td contentEditable="true">5000</td>
+                        <td contentEditable="true">CMRPR3343K</td>                        
+                    </tr>
+
+                </tbody>
+            </table>
+        </div>
+    </form>
+
+
+</body>
+</html>
+<script>
+    $('#myForm').submit(function (event) {
+        event.preventDefault();
+        var formData = new FormData();
+        var fileInput = document.getElementById("fileInput");
+        var moduleName = document.getElementById("ModuleName").value;
+        formData.append("file", fileInput.files[0]);
+        formData.append("moduleName", moduleName);
+        $.ajax({
+            url: '/Home/LetterGenerate',
+            type: 'POST',
+            data: formData,
+            processData: false,
+            contentType: false,
+            success: function (response) {
+            },
+            error: function (xhr, status, error) {
+                console.log(error);
+            }
+        });
+    });
+
+    function doIt(item, baseUrl) {
+        var htmlContent;
+
+
+        var selectedValue = $("#ModuleName").val();
+        console.log(selectedValue);
+
+        var selectedIds = [];
+        var selectedList = "";
+        var column1;
+        var column2;
+        var column3;
+        var column4;
+        var column5;
+        var column6;
+        // Loop through each checked checkbox and add its value to the selectedIds array
+        $("input[name='chkSelected']:checked").each(function () {
+            var tr = $(this).closest("tr");
+            column1 = tr.find("td:eq(1)").text();
+            column2 = tr.find("td:eq(2)").text();
+            column3 = tr.find("td:eq(3)").text();
+            column4 = tr.find("td:eq(4)").text();
+            column5 = tr.find("td:eq(5)").text();
+            column6 = tr.find("td:eq(6)").text();
+
+        });
+        var url = "@Url.Action("pdf", "Home")" + "?templateName=" + selectedValue + "&html=" + encodeURIComponent(htmlContent) + "&selectedIds=" + column1 + "," + column2 + "," + column3 + "," + column4 + "," + column5 + "," + column6;
+        var iframe = $('<iframe>', { src: url, frameborder: 0, scrolling: 'no', width: '100%', height: '100%' });
+        var modal = $('<div>', { class: 'modal', html: iframe });
+        modal.appendTo('body').modal();
+    }
+    function printPreview(item, baseUrl) {
+        var htmlContent;
+        var selectedValue = $("#ModuleName").val();
+
+
+        var url = "@Url.Action("PrintPreview", "Home")" + "?templateName=" + selectedValue + "&html=" + encodeURIComponent(htmlContent);
+        var iframe = $('<iframe>', { src: url, frameborder: 0, scrolling: 'no', width: '100%', height: '100%' });
+        var modal = $('<div>', { class: 'modal', html: iframe });
+        modal.appendTo('body').modal();
+
+
+    }
+
+    function doPrint(item, baseUrl) {
+        var htmlContent;
+        var selectedValue = $("#ModuleName").val();
+        var pageOrientation = $("#pageOrientation").val();
+
+        var selectedIds = [];
+        var selectedList = "";
+
+        var columnNames = [];
+        $("table tr:first th").each(function () {
+            columnNames.push($(this).text());
+        });
+
+        $("input[name='chkSelected']:checked").each(function () {
+            var tr = $(this).closest("tr");
+            var rowInfo = "";
+            for (var i = 1; i < columnNames.length; i++) {
+                var column = tr.find("td:eq(" + i + ")").text();
+                rowInfo += "${" + columnNames[i] + "}" + "=" + column + "|";
+            }
+            selectedIds.push(rowInfo.slice(0, -1));
+        });
+
+        document.getElementById("loader").style.display = "block";
+
+        $.ajax({
+            url: "@Url.Action("print", "Home")",
+            method: "POST",
+            data: {
+                templateName: selectedValue,
+                selectedIds: selectedIds,
+                pageOrientation: pageOrientation
+            },
+            success: function (data) {
+                document.getElementById("loader").style.display = "none";
+                alert('Pdf files successfully generated...!');
+
+            },
+            error: function (xhr, textStatus, errorThrown) {
+                document.getElementById("loader").style.display = "none";
+            }
+        });
+
+    }
+
+    function doPrintAll(item, baseUrl) {
+        var htmlContent;
+        var selectedValue = $("#ModuleName").val();
+
+        var selectedIds = [];
+        var selectedList = "";
+
+
+        // Loop through each checked checkbox and add its value to the selectedIds array
+        $("input[name='chkSelected']:checked").each(function () {
+            var tr = $(this).closest("tr");
+            column1 = tr.find("td:eq(1)").text();
+            column2 = tr.find("td:eq(2)").text();
+            column3 = tr.find("td:eq(3)").text();
+            column4 = tr.find("td:eq(4)").text();
+            column5 = tr.find("td:eq(5)").text();
+            column6 = tr.find("td:eq(6)").text();
+            selectedIds.push(rowData);
+            console.log(column1);
+
+            //var rowData = {
+            //    var tr = $(this).closest("tr");
+            //    column1: tr.find("td:eq(1)").text(),
+            //    column2: tr.find("td:eq(2)").text(),
+            //    column3: tr.find("td:eq(3)").text(),
+            //    column4: tr.find("td:eq(4)").text(),
+            //    column5: tr.find("td:eq(5)").text(),
+            //    column6: tr.find("td:eq(6)").text()
+            //};
+            //selectedIds.push(rowData);
+            //console.log(rowData)
+        });
+        var url = "@Url.Action("printAll", "Home")" + "?templateName=" + selectedValue + "&html=" + encodeURIComponent(htmlContent) + "&selectedIds=" + column1 + "," + column2 + "," + column3 + "," + column4 + "," + column5 + "," + column6;
+
+        var selectedIds = selectedIds;
+
+        $.ajax({
+            url: "@Url.Action("printAll", "Home")",
+            method: "POST",
+            data: {
+                templateName: selectedValue,
+                selectedIds: selectedIds
+            },
+            success: function (data) {
+                //const arr = data.split("$$||$$");
+
+                //printHtml(arr[0], arr[1]);
+                alert('Pdffile is successfully generated..!');
+
+            },
+            error: function (xhr, textStatus, errorThrown) {
+                // Handle error
+            }
+        });
+
+    }
+
+    //function printHtml(html, pdfName) {
+    //    // Create a new canvas element
+    //    var canvas = document.createElement('canvas');
+
+    //    // Set the canvas dimensions to match the HTML content
+    //    canvas.width = window.innerWidth;
+    //    canvas.height = window.innerHeight;
+
+    //    // Draw the HTML content onto the canvas using html2canvas
+    //    html2canvas(document.body, { canvas: canvas }).then(function () {
+    //        // Open a new window to print the canvas
+    //        var printWindow = window.open('', 'Print', 'height=600,width=800');
+
+    //        // Add the canvas to the print window
+    //        printWindow.document.write('<html><head><title>' + pdfName + '</title></head><body>');
+    //        printWindow.document.write('<img src="' + html + '>');
+    //        printWindow.document.write('</body></html>');
+
+    //        // Print the window
+    //        printWindow.print();
+    //        printWindow.close();
+    //    });
+    //}
+
+    var checkboxes = document.getElementsByName('chkSelected');
+    var printAllLink = document.getElementById('print-all-link');
+    var pdfLinks = document.getElementsByClassName('pdf-link');
+    var printLinks = document.getElementsByClassName('print-link');
+
+    // Disable all links by default
+    disableLinks(pdfLinks);
+    disableLinks(printLinks);
+    disableLink(printAllLink);
+
+    // Add click event listener to checkboxes
+    for (var i = 1; i < checkboxes.length; i++) {
+        checkboxes[i].addEventListener('click', function () {
+            var checkedIndex = Array.prototype.indexOf.call(checkboxes, this) - 1;
+            var checkedCount = getCheckedCount(checkboxes);
+            if (checkedCount == 0) {
+                disableLinks(pdfLinks);
+                disableLinks(printLinks);
+                disableLink(printAllLink);
+            } else if (checkedCount == 1) {
+                enableLinks(pdfLinks, checkedIndex);
+                enableLinks(printLinks, checkedIndex);
+                disableLink(printAllLink);
+            } else {
+                disableLinks(pdfLinks);
+                disableLinks(printLinks);
+                enableLink(printAllLink);
+            }
+        });
+    }
+
+    // Disable a link
+    function disableLink(link) {
+        link.style.pointerEvents = 'none';
+        link.style.opacity = '0.5';
+    }
+
+    // Enable a link
+    function enableLink(link) {
+        link.style.pointerEvents = 'auto';
+        link.style.opacity = '1';
+    }
+
+    // Disable multiple links
+    function disableLinks(links) {
+        for (var i = 0; i < links.length; i++) {
+            disableLink(links[i]);
+        }
+    }
+
+    // Enable multiple links
+    function enableLinks(links, checkedIndex) {
+        for (var i = 0; i < links.length; i++) {
+            if (i === checkedIndex) {
+                enableLink(links[i]);
+            } else {
+                disableLink(links[i]);
+            }
+        }
+    }
+
+
+    // Get the count of checked checkboxes
+    function getCheckedCount(checkboxes) {
+        var count = 0;
+        for (var i = 0; i < checkboxes.length; i++) {
+            if (checkboxes[i].checked) {
+                count++;
+            }
+        }
+        return count;
+    }
+
+    function updateLinkFunctionality() {
+        var checkedCount = getCheckedCount(checkboxes);
+        if (checkedCount == 0) {
+            disableLinks(pdfLinks);
+            disableLinks(printLinks);
+            disableLink(printAllLink);
+        } else if (checkedCount == 1) {
+            enableLinks(pdfLinks);
+            enableLinks(printLinks);
+            disableLink(printAllLink);
+        } else {
+            disableLinks(pdfLinks);
+            disableLinks(printLinks);
+            enableLink(printAllLink);
+        }
+    }
+
+
+    var headerCheckbox = document.getElementById('selectedIds');
+    headerCheckbox.addEventListener('click', function () {
+        for (var i = 0; i < checkboxes.length; i++) {
+            checkboxes[i].checked = headerCheckbox.checked;
+        }
+        updateLinkFunctionality();
+    });
+
+
+</script>
+
+
+
+
