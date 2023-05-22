@@ -2,9 +2,10 @@
 using System;
 using System.IO;
 using System.Linq;
-using System.Net.Mail;
 using System.Net;
 using PdfDocument = SelectPdf.PdfDocument;
+using MimeKit;
+using System.Net.Mail;
 
 namespace Template.Models
 {
@@ -37,7 +38,8 @@ namespace Template.Models
                 }
                 finalPWD = finalPWD.ToUpper().TrimEnd('_');
             }
-            //SendPasswordtoMail(finalPWD, "ravitejan011@gmail.com", "raviteja7071@gmail.com");
+            EmailSender emailSender = new EmailSender();
+            emailSender.SendEmailAsync("raviteja7071@gmail.com", "Password for PDF File", "Your Generated Password Is : " + finalPWD);
 
             string htmlString = html;
 
@@ -133,23 +135,6 @@ namespace Template.Models
 
             // All checks passed, PAN number is valid
             return true;
-        }
-
-        private string SendPasswordtoMail(string password, string fromEmail, string toEmail)
-        {
-            string subject = "Password for your account";
-            string body = "Your password is: " + password;
-
-            MailMessage message = new MailMessage(fromEmail, toEmail, subject, body);
-            message.IsBodyHtml = true;
-
-            SmtpClient client = new SmtpClient("smtp.gmail.com", 587);
-            client.EnableSsl = true;
-            client.UseDefaultCredentials = false;
-            client.Credentials = new NetworkCredential("ravitejan011@gmail.com", "Raviteja1234");
-
-            client.Send(message);
-            return "";
         }
 
     }
