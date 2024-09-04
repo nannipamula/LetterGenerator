@@ -19,10 +19,11 @@ public class EmailSender
 
         MailMessage message = new MailMessage();
         message.Subject = subject;
+        string passwordInstructionsHTML = string.Empty;
         if (!string.IsNullOrEmpty(tmplatePWD))
         {
             // Simplified email content to avoid spam triggers
-            string passwordInstructionsHTML = @"
+            passwordInstructionsHTML = @"
         <!DOCTYPE html>
         <html>
         <head>
@@ -70,25 +71,8 @@ public class EmailSender
         </body>
         </html>";
 
-            // Set the email body as HTML
-            message.Body = passwordInstructionsHTML;
-            message.IsBodyHtml = true;
-
-            // Introduce a delay to throttle sending and avoid high volume flags
-            System.Threading.Thread.Sleep(1000); // 1 second delay between emails
-
-            // Ensure proper SMTP settings and use the correct port (587) with SSL/TLS
-            var smtpClient = new SmtpClient("smtp.office365.com")
-            {
-                Port = 587,
-                Credentials = new NetworkCredential(senderEmail, senderPassword),
-                EnableSsl = true,
-            };
-
-            // Send the email
-            smtpClient.Send(message);
         }
-
+        message.Body = passwordInstructionsHTML;
         message.BodyEncoding = Encoding.UTF8;
         message.From = new MailAddress(senderEmail);
 
