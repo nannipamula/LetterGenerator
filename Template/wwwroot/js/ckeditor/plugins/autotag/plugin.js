@@ -4,7 +4,7 @@
 CKEDITOR.plugins.add('autotag', {
     requires: 'autocomplete,textmatch',
 
-    init: function (editor) {       
+    init: function (editor) {
         editor.on('instanceReady', function () {
             var config = {};
             // Called when the user types in the editor or moves the caret.
@@ -226,7 +226,7 @@ CKEDITOR.plugins.add('autotag', {
                     name: '${New Monthly Gross Salary}',
                     type: 'feature'
                 }
-            ];           
+            ];
             // Returns (through its callback) the suggestions for the current query.
             function dataCallback(matchInfo, callback) {
                 // Remove the '#' tag.
@@ -247,7 +247,9 @@ CKEDITOR.plugins.add('autotag', {
 
             // Define the templates of the autocomplete suggestions dropdown and output text.
             config.itemTemplate = '<li data-id="{id}" class="issue-{type}">{name}</li>';
+
             config.outputTemplate = '{name}';
+
 
             // Attach autocomplete to the editor.
             new CKEDITOR.plugins.autocomplete(editor, config);

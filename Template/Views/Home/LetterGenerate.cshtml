@@ -3,15 +3,17 @@
 <head>
     <meta charset="utf-8" />
     <title></title>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.0/html2canvas.min.js"></script>
+    <link href="~/css/site.css" rel="stylesheet" />
+    <script src="~/lib/jquery/dist/jquery.js"></script>
+    <script src="~/js/ckeditor/ckeditor.js"></script>
+    <link href="~/lib/bootstrap/dist/css/bootstrap.min.css" rel="stylesheet" />
 
-    <script type="text/javascript" src="https://code.jquery.com/jquery-1.7.1.min.js"></script>
-    <script src="https://cdn.datatables.net/1.10.25/js/jquery.dataTables.min.js"></script>
-    <link rel="stylesheet" href="~/css/site.css" />
+
+    <link href="~/css/site.css" rel="stylesheet" />
     <script src="~/js/plugin.js"></script>
 </head>
 <style>
-    
+
     #loader {
         position: fixed;
         top: 0;
@@ -90,8 +92,8 @@
             margin: 0 auto;
             width: 90%;
             height: calc(100% - 60px);
-            max-width: 800px;
-            max-height: 600px;
+            max-width: 1200px;
+            max-height: 690px;
             background-color: #fff;
             border: 1px solid #ccc;
             border-radius: 4px;
@@ -126,7 +128,7 @@
 
         th:nth-child(2),
         td:nth-child(2) {
-            left: 100px; 
+            left: 100px;
         }
 
     @@media screen and (max-width: 767px) {
@@ -149,15 +151,89 @@
         td {
             display: block;
             text-align: right;
-            
         }
-       
     }
 
-</style>
+    /* Styles for the modal */
+    .modal2 {
+        display: none;
+        position: fixed;
+        z-index: 1;
+        left: 0;
+        top: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(0, 0, 0, 0.7);
+    }
+
+    .modal-content {
+        background-color: #fefefe;
+        margin: 15% auto;
+        padding: 20px;
+        border: 1px solid #888;
+        width: 80%;
+        box-shadow: 0 4px 8px 0 rgba(0, 0, 0, 0.2);
+        text-align: center;
+        position: relative;
+    }
+
+    .close {
+        position: absolute;
+        top: 0;
+        right: 0;
+        padding: 10px;
+        cursor: pointer;
+    }
+
+    /* Styles for the overlay */
+    .overlay {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(0, 0, 0, 0.7);
+        z-index: 1000;
+    }
+
+    /* Styles for the modal */
+    .modal2 {
+        display: none;
+        position: fixed;
+        z-index: 1001; /* Use a higher z-index than the overlay */
+        left: 50%;
+        top: 50%;
+        transform: translate(-50%, -50%);
+        background-color: #fefefe;
+        padding: 20px;
+        border: 1px solid #888;
+        box-shadow: 0 4px 8px 0 rgba(0, 0, 0, 0.2);
+        max-height: 98%;
+        overflow-y: hidden; /* Enable vertical scrollbar when needed */
+    }
+
+    .close {
+        position: absolute;
+        top: 0;
+        right: 0;
+        padding: 10px;
+        cursor: pointer;
+    }
+
+    </style>
 
 
 <body>
+    <div id="overlay" class="overlay"></div>
+    <div id="editorModal" class="modal2" style="display: none; width: 1226px;">
+        <div class="modal-content" style="margin-top: -14px;width: 1182px;">
+            <a id="myLink" onclick="doPrintfromEditModule(this,'@Url.Action("editModulePrint","Home")')"><img src="~/icons/pdf.png" style="height: 37px;" /></a>
+            <span class="close">&times;</span>
+            <div id="ckeditorContainer"><textarea id="editorfor"> </textarea></div>
+
+        </div>
+    </div>
     <form id="myForm" method="post" enctype="multipart/form-data">
         <input type="file" id="fileInput" name="fileInput" style="margin-top: 13px;width: 235px;margin-left: 32px; display:none">
         <button type="submit" class="btn-primary" style="margin-top: 11px;margin-left: -6px; display:none">Upload</button>
@@ -181,12 +257,12 @@
                     }
                 }}
         </select>
-
         <select class="form-control" type="text" id="pageOrientation" name="pageOrientation" style="margin-top: -38px;margin-left: 180px;width: 251px;">
             <option>Portrait</option>
             <option>Landscape</option>
         </select>
         <a id="print-all-link" onclick="doPrint(this,'@Url.Action("print","Home")')"><img src="~/icons/print.jpg" style="height: 37px;margin-left: 907px;" />Create Pdf</a>
+
 
         <div id="loader">
             <div class="loader-content">
@@ -195,7 +271,7 @@
             </div>
         </div>
         <div style="width: 1283px; overflow-x: auto;">
-            
+
             <table id="myTable" style="width: max-content;">
                 <thead>
                     <tr>
@@ -209,6 +285,7 @@
                         <th contentEditable="true">DOC</th>
                         <th contentEditable="true">DOJYear</th>
                         <th contentEditable="true">DOJ</th>
+                        <th contentEditable="true">Email Id</th>
                         <th contentEditable="true">Designation</th>
                         <th contentEditable="true">RCS Grade</th>
                         <th contentEditable="true">Monthly Basic</th>
@@ -223,15 +300,17 @@
                         <th contentEditable="true">Target Bonus</th>
                         <th contentEditable="true">New PF</th>
                         <th contentEditable="true">Pan Number</th>
+                        <th contentEditable="true">New Gratuity</th>
 
 
                     </tr>
                 </thead>
                 <tbody>
                     <tr>
-                        <td>                            
+                        <td>
                             <a id="myLink" class="pdf-link" onclick="doIt(this,'@Url.Action("pdf", "Home")')"><img src="~/icons/view.jpg" style="height: 31px;" /></a> |
-                            <a id="myLink" class="print-link" onclick="doPrint(this,'@Url.Action("print","Home")')"><img src="~/icons/pdf.png" style="height: 37px;" /></a>
+                            <a id="myLink" class="print-link" onclick="doPrint(this,'@Url.Action("print","Home")')"><img src="~/icons/pdf.png" style="height: 37px;" /></a> |
+                            <a id="myLink" class="editor-link" onclick="editTemplate(this,'@Url.Action("templateEditor","Home")')"><img src="~/icons/edit-icon-png-3598.png" style="height: 37px;" /></a>
                         </td>
                         <td><input type="checkbox" name="chkSelected" value="1" /></td>
                         <td contentEditable="true">
@@ -254,30 +333,33 @@
                         </td>
 
                         <td contentEditable="true">2023</td>
-                        <td contentEditable="true">24-04-2023</td>
+                        <td contentEditable="true">15-03-2022</td>
+                        <td contentEditable="true">ravitejan011@gmail.com</td>
                         <td contentEditable="true">Senior Software Engineer</td>
                         <td contentEditable="true">Grade A</td>
-                        <td contentEditable="true">45,000</td>
-                        <td contentEditable="true">10,000</td>
-                        <td contentEditable="true">5000</td>
-                        <td contentEditable="true">3000</td>
                         <td contentEditable="true">40,000</td>
-                        <td contentEditable="true">25,000</td>
-                        <td contentEditable="true">20,0000</td>
+                        <td contentEditable="true">20,000</td>
+                        <td contentEditable="true">32,350</td>
+                        <td contentEditable="true">3000</td>
+                        <td contentEditable="true">4,80,000</td>
+                        <td contentEditable="true">2,40,000</td>
+                        <td contentEditable="true">3,88,200</td>
                         <td contentEditable="true">5,00,000</td>
                         <td contenteditable="true">1234 Elm Street, Suite 5678, North Building, West Wing, Downtown Business Center, Anytown USA 12345</td>
 
                         <td contentEditable="true">10,000</td>
                         <td contentEditable="true">5000</td>
                         <td contentEditable="true">DVBPR5673J</td>
-                       
+                        <td contentEditable="true">55,000</td>
+
 
                     </tr>
 
                     <tr>
-                        <td>                            
+                        <td>
                             <a id="myLink" class="pdf-link" onclick="doIt(this,'@Url.Action("pdf", "Home")')"><img src="~/icons/view.jpg" style="height: 31px;" /></a> |
-                            <a id="myLink" class="print-link" onclick="doPrint(this,'@Url.Action("print","Home")')"><img src="~/icons/pdf.png" style="height: 37px;" /></a>                            
+                            <a id="myLink" class="print-link" onclick="doPrint(this,'@Url.Action("print","Home")')"><img src="~/icons/pdf.png" style="height: 37px;" /></a> |
+                            <a id="myLink" class="editor-link" onclick="editTemplate(this,'@Url.Action("templateEditor","Home")')"><img src="~/icons/edit-icon-png-3598.png" style="height: 37px;" /></a>
                         </td>
                         <td><input type="checkbox" name="chkSelected" value="2" /></td>
                         <td contentEditable="true">
@@ -300,29 +382,31 @@
                         </td>
 
                         <td contentEditable="true">2023</td>
-                        <td contentEditable="true">24-04-2023</td>
+                        <td contentEditable="true">29-07-2019</td>
+                        <td contentEditable="true">raviteja7071@gmail.com</td>
                         <td contentEditable="true">Lead Software Developer</td>
                         <td contentEditable="true">Grade A</td>
-                        <td contentEditable="true">45,000</td>
-                        <td contentEditable="true">10,000</td>
-                        <td contentEditable="true">5000</td>
-                        <td contentEditable="true">3000</td>
                         <td contentEditable="true">40,000</td>
-                        <td contentEditable="true">25,000</td>
-                        <td contentEditable="true">20,0000</td>
+                        <td contentEditable="true">20,000</td>
+                        <td contentEditable="true">32,350</td>
+                        <td contentEditable="true">3000</td>
+                        <td contentEditable="true">4,80,000</td>
+                        <td contentEditable="true">2,40,000</td>
+                        <td contentEditable="true">3,88,200</td>
                         <td contentEditable="true">5,00,000</td>
                         <td contenteditable="true">9876 Oak Avenue, Apartment 456, Block C, Spring Valley Complex, Cityville USA 54321</td>
                         <td contentEditable="true">10,000</td>
                         <td contentEditable="true">5000</td>
                         <td contentEditable="true">RGVPR3923M</td>
+                        <td contentEditable="true">55,000</td>
 
-                        
                     </tr>
 
                     <tr>
-                        <td>                            
+                        <td>
                             <a id="myLink" class="pdf-link" onclick="doIt(this,'@Url.Action("pdf", "Home")')"><img src="~/icons/view.jpg" style="height: 31px;" /></a> |
-                            <a id="myLink" class="print-link" onclick="doPrint(this,'@Url.Action("print","Home")')"><img src="~/icons/pdf.png" style="height: 37px;" /></a>                            
+                            <a id="myLink" class="print-link" onclick="doPrint(this,'@Url.Action("print","Home")')"><img src="~/icons/pdf.png" style="height: 37px;" /></a> |
+                            <a id="myLink" class="editor-link" onclick="editTemplate(this,'@Url.Action("templateEditor","Home")')"><img src="~/icons/edit-icon-png-3598.png" style="height: 37px;" /></a>
                         </td>
                         <td><input type="checkbox" name="chkSelected" value="" /></td>
                         <td contentEditable="true">
@@ -345,29 +429,31 @@
                         </td>
 
                         <td contentEditable="true">2023</td>
-                        <td contentEditable="true">24-04-2023</td>
+                        <td contentEditable="true">10-11-2020</td>
+                        <td contentEditable="true">raviteja4a4@gmail.com</td>
                         <td contentEditable="true">Software Architect</td>
                         <td contentEditable="true">Grade A</td>
-                        <td contentEditable="true">45,000</td>
-                        <td contentEditable="true">10,000</td>
-                        <td contentEditable="true">5000</td>
-                        <td contentEditable="true">3000</td>
                         <td contentEditable="true">40,000</td>
-                        <td contentEditable="true">25,000</td>
-                        <td contentEditable="true">20,0000</td>
+                        <td contentEditable="true">20,000</td>
+                        <td contentEditable="true">32,350</td>
+                        <td contentEditable="true">3000</td>
+                        <td contentEditable="true">4,80,000</td>
+                        <td contentEditable="true">2,40,000</td>
+                        <td contentEditable="true">3,88,200</td>
                         <td contentEditable="true">5,00,000</td>
                         <td contenteditable="true">456 Elm Street, Unit 123, Highrise Towers, Smallville USA 67890</td>
                         <td contentEditable="true">10,000</td>
                         <td contentEditable="true">5000</td>
                         <td contentEditable="true">KVRPR3212L</td>
+                        <td contentEditable="true">55,000</td>
 
-                        
                     </tr>
 
                     <tr>
-                        <td>                            
+                        <td>
                             <a id="myLink" class="pdf-link" onclick="doIt(this,'@Url.Action("pdf", "Home")')"><img src="~/icons/view.jpg" style="height: 31px;" /></a> |
-                            <a id="myLink" class="print-link" onclick="doPrint(this,'@Url.Action("print","Home")')"><img src="~/icons/pdf.png" style="height: 37px;" /></a>                            
+                            <a id="myLink" class="print-link" onclick="doPrint(this,'@Url.Action("print","Home")')"><img src="~/icons/pdf.png" style="height: 37px;" /></a> |
+                            <a id="myLink" class="editor-link" onclick="editTemplate(this,'@Url.Action("templateEditor","Home")')"><img src="~/icons/edit-icon-png-3598.png" style="height: 37px;" /></a>
                         </td>
                         <td><input type="checkbox" name="chkSelected" value="" /></td>
                         <td contentEditable="true">
@@ -390,29 +476,31 @@
                         </td>
 
                         <td contentEditable="true">2023</td>
-                        <td contentEditable="true">24-04-2023</td>
+                        <td contentEditable="true">05-06-2018</td>
+                        <td contentEditable="true">mirchi62@gmail.com</td>
                         <td contentEditable="true">Technical Lead</td>
                         <td contentEditable="true">Grade A</td>
-                        <td contentEditable="true">45,000</td>
-                        <td contentEditable="true">10,000</td>
-                        <td contentEditable="true">5000</td>
-                        <td contentEditable="true">3000</td>
                         <td contentEditable="true">40,000</td>
-                        <td contentEditable="true">25,000</td>
-                        <td contentEditable="true">20,0000</td>
+                        <td contentEditable="true">20,000</td>
+                        <td contentEditable="true">32,350</td>
+                        <td contentEditable="true">3000</td>
+                        <td contentEditable="true">4,80,000</td>
+                        <td contentEditable="true">2,40,000</td>
+                        <td contentEditable="true">3,88,200</td>
                         <td contentEditable="true">5,00,000</td>
                         <td contenteditable="true">789 Pine Road, Building 246, Industrial Park, Countryside USA 13579</td>
                         <td contentEditable="true">10,000</td>
                         <td contentEditable="true">5000</td>
                         <td contentEditable="true">LVCPR3222J</td>
+                        <td contentEditable="true">55,000</td>
 
-                        
                     </tr>
 
                     <tr>
-                        <td>                            
+                        <td>
                             <a id="myLink" class="pdf-link" onclick="doIt(this,'@Url.Action("pdf", "Home")')"><img src="~/icons/view.jpg" style="height: 31px;" /></a> |
-                            <a id="myLink" class="print-link" onclick="doPrint(this,'@Url.Action("print","Home")')"><img src="~/icons/pdf.png" style="height: 37px;" /></a>                           
+                            <a id="myLink" class="print-link" onclick="doPrint(this,'@Url.Action("print","Home")')"><img src="~/icons/pdf.png" style="height: 37px;" /></a> |
+                            <a id="myLink" class="editor-link" onclick="editTemplate(this,'@Url.Action("templateEditor","Home")')"><img src="~/icons/edit-icon-png-3598.png" style="height: 37px;" /></a>
                         </td>
                         <td><input type="checkbox" name="chkSelected" value="" /></td>
                         <td contentEditable="true">
@@ -435,29 +523,31 @@
                         </td>
 
                         <td contentEditable="true">2023</td>
-                        <td contentEditable="true">24-04-2023</td>
+                        <td contentEditable="true">21-09-2021</td>
+                        <td contentEditable="true">raviteja7071@gmail.com</td>
                         <td contentEditable="true">Senior Systems Engineer</td>
                         <td contentEditable="true">Grade A</td>
-                        <td contentEditable="true">45,000</td>
-                        <td contentEditable="true">10,000</td>
-                        <td contentEditable="true">5000</td>
-                        <td contentEditable="true">3000</td>
                         <td contentEditable="true">40,000</td>
-                        <td contentEditable="true">25,000</td>
-                        <td contentEditable="true">20,0000</td>
+                        <td contentEditable="true">20,000</td>
+                        <td contentEditable="true">32,350</td>
+                        <td contentEditable="true">3000</td>
+                        <td contentEditable="true">4,80,000</td>
+                        <td contentEditable="true">2,40,000</td>
+                        <td contentEditable="true">3,88,200</td>
                         <td contentEditable="true">5,00,000</td>
                         <td contenteditable="true">2468 Cedar Lane, Floor 5, East Wing, Mountainview Corporate Center, Mountainview USA 86420</td>
                         <td contentEditable="true">10,000</td>
                         <td contentEditable="true">5000</td>
                         <td contentEditable="true">KVRGR2213M</td>
+                        <td contentEditable="true">55,000</td>
 
-                        
                     </tr>
 
                     <tr>
-                        <td>                            
+                        <td>
                             <a id="myLink" class="pdf-link" onclick="doIt(this,'@Url.Action("pdf", "Home")')"><img src="~/icons/view.jpg" style="height: 31px;" /></a> |
-                            <a id="myLink" class="print-link" onclick="doPrint(this,'@Url.Action("print","Home")')"><img src="~/icons/pdf.png" style="height: 37px;" /></a>                            
+                            <a id="myLink" class="print-link" onclick="doPrint(this,'@Url.Action("print","Home")')"><img src="~/icons/pdf.png" style="height: 37px;" /></a> |
+                            <a id="myLink" class="editor-link" onclick="editTemplate(this,'@Url.Action("templateEditor","Home")')"><img src="~/icons/edit-icon-png-3598.png" style="height: 37px;" /></a>
                         </td>
                         <td><input type="checkbox" name="chkSelected" value="" /></td>
                         <td contentEditable="true">
@@ -480,21 +570,23 @@
                         </td>
 
                         <td contentEditable="true">2023</td>
-                        <td contentEditable="true">24-04-2023</td>
+                        <td contentEditable="true">14-12-2017</td>
+                        <td contentEditable="true">jayendran.gowrisankar@indiumsoft.com</td>
                         <td contentEditable="true">Solutions Architect</td>
                         <td contentEditable="true">Grade A</td>
-                        <td contentEditable="true">45,000</td>
-                        <td contentEditable="true">10,000</td>
-                        <td contentEditable="true">5000</td>
-                        <td contentEditable="true">3000</td>
                         <td contentEditable="true">40,000</td>
-                        <td contentEditable="true">25,000</td>
-                        <td contentEditable="true">20,0000</td>
+                        <td contentEditable="true">20,000</td>
+                        <td contentEditable="true">32,350</td>
+                        <td contentEditable="true">3000</td>
+                        <td contentEditable="true">4,80,000</td>
+                        <td contentEditable="true">2,40,000</td>
+                        <td contentEditable="true">3,88,200</td>
                         <td contentEditable="true">5,00,000</td>
                         <td contenteditable="true">1357 Birch Drive, Room 24680, South Building, Seaside Convention Center, Seaside USA 24680</td>
                         <td contentEditable="true">10,000</td>
                         <td contentEditable="true">5000</td>
-                        <td contentEditable="true">CMRPR3343K</td>                        
+                        <td contentEditable="true">CMRPR3343K</td>
+                        <td contentEditable="true">55,000</td>
                     </tr>
 
                 </tbody>
@@ -506,6 +598,66 @@
 </body>
 </html>
 <script>
+    var htmlContentData;
+    var editor = CKEDITOR.replace('editorfor', {
+        height: 500,
+        plugins: 'textmatch,autocomplete,dialogui,wysiwygarea,filebrowser,docprops,tableresize,tabletoolstoolbar,base64image,bgimage,attach,exportpdf,imagerotate,markTag,autotag,autotag2,toolbar,a11yhelp,about,basicstyles,bidi,blockquote,clipboard,colorbutton,colordialog,contextmenu,dialogadvtab,div,elementspath,enterkey,entities,filebrowser,find,fakeobjects,flash,font,format,horizontalrule,htmlwriter,image,indent,indentblock,justify,language,link,list,liststyle,magicline,maximize,newpage,pagebreak,pastefromword,pastetext,popup,preview,print,removeformat,resize,save,scayt,smiley,sourcearea,specialchar,stylescombo,tab,table,tableselection,tabletools,templates,toolbar,undo,wsc,wysiwygarea,wsc',
+        docprops: true,
+        font_names: 'Arial/Arial, Helvetica, sans-serif;' +
+            'Times New Roman/Times New Roman, Times, serif;' +
+            'Open Sans/Open Sans, sans-serif;' + 'verdana;' +
+            'Roboto/Roboto, sans-serif;' + 'Prudhvi;' + 'Calibri;' +
+            'Calibri light;' + 'Garamond;' + 'Futura;' + 'Comic Sans;' +
+            'Impact;' + 'Courier New;' + 'Tahoma;' + 'Georgia;' + 'Baskerville;' +
+            'Century Gothic;' + 'Franklin Gothic;' + 'Palatino;' + 'Copperplate;' +
+            'Brush Script;' + 'Lucida Sans;' + 'Lucida Calligraphy;' + 'Baskerville;' +
+            'Century Gothic;' + 'Franklin Gothic;' + 'Myriad;' + 'Optima;' + 'Rockwell;' +
+            'Univers;' + 'Eurostile;'
+    });
+
+    editor.ui.addButton('Header', {
+        label: 'Insert Header',
+        // command: 'insertHeader',
+        click: function () {
+            loadAndInsertContentHeader(editor, 'header.html');
+        },
+        toolbar: 'insert',
+        icon: '/icons/Header.png',
+    });
+    editor.ui.addButton('Footer', {
+        label: 'Insert Footer',
+        // command: 'insertFooter',
+        click: function () {
+            loadAndInsertContentfooter(editor, 'header.html');
+        },
+        toolbar: 'insert',
+        icon: '/icons/footer.png',
+    });
+
+    function loadAndInsertContentHeader(editor, fileName) {
+        console.log(fileName);
+        alert('loadAndInsertFunction Working...!');
+        editor.insertHtml(`
+                          <div class="header-container">
+                            <div class="header">
+                              <h1>Welcome to My Stylish Website</h1>
+                              <p>Your header content goes here. It's awesome!</p>
+                            </div>
+                          </div>
+                        `);
+
+    }
+    function loadAndInsertContentfooter(editor, fileName) {
+        console.log(fileName);
+        alert('loadAndInsertFunction Working...!');
+        editor.insertHtml(`
+                          <div class="footer">
+                            <p>&copy; 2023 My Stylish Website</p>
+                          </div>
+                                `);
+
+    }
+
     $('#myForm').submit(function (event) {
         event.preventDefault();
         var formData = new FormData();
@@ -526,6 +678,27 @@
             }
         });
     });
+
+
+    // Function to open the modal and initialize CKEditor
+    function openEditorModal(data) {
+
+        const modal = document.getElementById('editorModal');
+        const overlay = document.getElementById('overlay');
+        const closeButton = document.getElementsByClassName('close')[0];
+
+        // Show the overlay and modal
+        overlay.style.display = 'block';
+        modal.style.display = 'block';
+
+        // Close the modal and overlay when the close button is clicked
+        closeButton.onclick = function () {
+            overlay.style.display = 'none';
+            modal.style.display = 'none';
+        };
+        editor.setData(data);
+    }
+
 
     function doIt(item, baseUrl) {
         var htmlContent;
@@ -554,8 +727,11 @@
 
         });
         var url = "@Url.Action("pdf", "Home")" + "?templateName=" + selectedValue + "&html=" + encodeURIComponent(htmlContent) + "&selectedIds=" + column1 + "," + column2 + "," + column3 + "," + column4 + "," + column5 + "," + column6;
-        var iframe = $('<iframe>', { src: url, frameborder: 0, scrolling: 'no', width: '100%', height: '100%' });
-        var modal = $('<div>', { class: 'modal', html: iframe });
+        var iframe = $('<iframe>', { src: url, frameborder: 0, scrolling: 'yes', width: '100%', height: '100%' }).css('margin-top', '43px');
+        var modal = $('<div>', { class: 'modal' });
+        modal.append(iframe);
+
+        // Append the modal to the body and show it
         modal.appendTo('body').modal();
     }
     function printPreview(item, baseUrl) {
@@ -570,7 +746,94 @@
 
 
     }
+    function editTemplate(item, baseUrl) {
+        var htmlContent;
+        var selectedValue = $("#ModuleName").val();
+        var pageOrientation = $("#pageOrientation").val();
 
+        var selectedIds = [];
+        var selectedList = "";
+
+        var columnNames = [];
+        $("table tr:first th").each(function () {
+            columnNames.push($(this).text());
+        });
+
+        $("input[name='chkSelected']:checked").each(function () {
+            var tr = $(this).closest("tr");
+            var rowInfo = "";
+            for (var i = 1; i < columnNames.length; i++) {
+                var column = tr.find("td:eq(" + i + ")").text();
+                rowInfo += "${" + columnNames[i] + "}" + "=" + column + "|";
+            }
+            selectedIds.push(rowInfo.slice(0, -1));
+        });
+
+        document.getElementById("loader").style.display = "block";
+
+        $.ajax({
+            url: "@Url.Action("templateEditor", "Home")",
+            method: "POST",
+            data: {
+                templateName: selectedValue,
+                selectedIds: selectedIds
+            },
+            success: function (data) {
+                document.getElementById("loader").style.display = "none";
+                console.log(data);
+                openEditorModal(data);
+                htmlContentData = data;
+
+            },
+            error: function (xhr, textStatus, errorThrown) {
+                document.getElementById("loader").style.display = "none";
+            }
+        });
+
+    }
+
+    function doPrintfromEditModule(item, baseUrl) {
+        document.getElementById("loader").style.display = "block";
+        var templateName = $("#ModuleName").val();
+        var editorContent = editor.getData();
+        var selectedIds = [];
+        var selectedList = "";
+
+        var columnNames = [];
+        $("table tr:first th").each(function () {
+            columnNames.push($(this).text());
+        });
+
+        $("input[name='chkSelected']:checked").each(function () {
+            var tr = $(this).closest("tr");
+            var rowInfo = "";
+            for (var i = 1; i < columnNames.length; i++) {
+                var column = tr.find("td:eq(" + i + ")").text();
+                rowInfo += "${" + columnNames[i] + "}" + "=" + column + "|";
+            }
+            selectedIds.push(rowInfo.slice(0, -1));
+        });
+
+        $.ajax({
+            url: "@Url.Action("editModulePrint", "Home")",
+            method: "POST",
+            data: {
+                templateName: templateName,
+                htmlContentFromEditModule: editorContent,
+                selectedIds: selectedIds
+                
+            },
+            success: function (data) {
+                document.getElementById("loader").style.display = "none";
+                alert('Pdf files successfully generated...!');
+
+            },
+            error: function (xhr, textStatus, errorThrown) {
+                document.getElementById("loader").style.display = "none";
+            }
+        });
+
+    }
     function doPrint(item, baseUrl) {
         var htmlContent;
         var selectedValue = $("#ModuleName").val();
@@ -606,7 +869,7 @@
             },
             success: function (data) {
                 document.getElementById("loader").style.display = "none";
-                alert('Pdf files successfully generated...!');
+                alert(data);
 
             },
             error: function (xhr, textStatus, errorThrown) {
@@ -701,11 +964,15 @@
     var printAllLink = document.getElementById('print-all-link');
     var pdfLinks = document.getElementsByClassName('pdf-link');
     var printLinks = document.getElementsByClassName('print-link');
+    var editorLink = document.getElementsByClassName('editor-link');
 
     // Disable all links by default
     disableLinks(pdfLinks);
     disableLinks(printLinks);
+    disableLinks(editorLink);
+
     disableLink(printAllLink);
+
 
     // Add click event listener to checkboxes
     for (var i = 1; i < checkboxes.length; i++) {
@@ -715,14 +982,17 @@
             if (checkedCount == 0) {
                 disableLinks(pdfLinks);
                 disableLinks(printLinks);
+                disableLinks(editorLink);
                 disableLink(printAllLink);
             } else if (checkedCount == 1) {
                 enableLinks(pdfLinks, checkedIndex);
                 enableLinks(printLinks, checkedIndex);
+                enableLinks(editorLink, checkedIndex);
                 disableLink(printAllLink);
             } else {
                 disableLinks(pdfLinks);
                 disableLinks(printLinks);
+                disableLinks(editorLink);
                 enableLink(printAllLink);
             }
         });
@@ -775,14 +1045,18 @@
         if (checkedCount == 0) {
             disableLinks(pdfLinks);
             disableLinks(printLinks);
+            disableLinks(editorLink);
             disableLink(printAllLink);
+
         } else if (checkedCount == 1) {
             enableLinks(pdfLinks);
             enableLinks(printLinks);
+            enableLinks(editorLink);
             disableLink(printAllLink);
         } else {
             disableLinks(pdfLinks);
             disableLinks(printLinks);
+            disableLinks(editorLink);
             enableLink(printAllLink);
         }
     }

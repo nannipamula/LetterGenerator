@@ -1530,7 +1530,7 @@
 
 	function encodeItem( item ) {
 		return CKEDITOR.tools.array.reduce( CKEDITOR.tools.object.keys( item ), function( cur, key ) {
-			cur[ key ] = CKEDITOR.tools.htmlEncode( item[ key ] );
+			cur[key] = CKEDITOR.tools.htmlEncode(item[key]);
 			return cur;
 		}, {} );
 	}

@@ -1,5 +1,4 @@
-﻿using iText.Html2pdf;
-using Microsoft.AspNetCore.Hosting;
+﻿using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Hosting.Server;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -7,6 +6,10 @@ using Microsoft.AspNetCore.Routing.Template;
 using Microsoft.Extensions.Logging;
 using Microsoft.Office.Interop.Excel;
 using OfficeOpenXml;
+using PdfSharpCore;
+using PdfSharpCore.Drawing.Layout;
+using PdfSharpCore.Drawing;
+using PdfSharpCore.Pdf;
 using System;
 using System.Collections;
 using System.Collections.Generic;
@@ -17,10 +20,12 @@ using System.Linq;
 using System.Reflection.Metadata;
 using System.Text;
 using System.Text.RegularExpressions;
+using System.Threading;
 using System.Threading.Tasks;
 using System.Web;
 using Template.Models;
-using Document = iTextSharp.text.Document;
+using Template.Services;
+//using Document = iTextSharp.text.Document;
 
 namespace Template.Controllers
 {
@@ -28,10 +33,12 @@ namespace Template.Controllers
     {
         private readonly ILogger<HomeController> _logger;
         private readonly IWebHostEnvironment _webHostEnvironment;
-        public HomeController(ILogger<HomeController> logger, IWebHostEnvironment webHostEnvironment)
+        private readonly PdfGenerator _pdfGenerator;
+        public HomeController(ILogger<HomeController> logger, IWebHostEnvironment webHostEnvironment, PdfGenerator pdfGenerator)
         {
             _logger = logger;
             _webHostEnvironment = webHostEnvironment;
+            _pdfGenerator = pdfGenerator;
         }
 
 
@@ -236,6 +243,7 @@ namespace Template.Controllers
             {
                 finalValuesfromGrid[i] = finalValuesfromGrid[i].Trim();
             }
+
             var filePath = _webHostEnvironment.WebRootPath + $"/Templates/{templateName}.html";
             string html = System.IO.File.ReadAllText(filePath);
 
@@ -248,33 +256,44 @@ namespace Template.Controllers
                 headers.Add("{" + value + "}");
             }
             List<string> distinctListHeaders = headers.Distinct().ToList();
+            finalValuesfromGrid = finalValuesfromGrid.Where(s => !string.IsNullOrEmpty(s)).ToArray();
 
             for (int i = 0; i < finalValuesfromGrid.Length; i++)
             {
                 html = html.Replace("$" + distinctListHeaders[i], finalValuesfromGrid[i]);
             }
 
+            // Create a new PDF document
+            PdfDocument document = new PdfDocument();
+            PdfPage page = document.AddPage();
+            XGraphics gfx = XGraphics.FromPdfPage(page);
+            XFont font = new XFont("Arial", 12);
 
+            // Render the HTML content as PDF
+            XTextFormatter tf = new XTextFormatter(gfx);
+            XRect rect = new XRect(40, 40, page.Width - 80, page.Height - 80);
+            tf.DrawString(html, font, XBrushes.Black, rect, XStringFormats.TopLeft);
+
+            // Save the PDF to a MemoryStream
             using (MemoryStream memoryStream = new MemoryStream())
             {
-                ConverterProperties converterProperties = new ConverterProperties();
-                HtmlConverter.ConvertToPdf(html, memoryStream, converterProperties);
-
+                document.Save(memoryStream, false);
                 byte[] bytes = memoryStream.ToArray();
 
-                return new FileContentResult(bytes, "application/pdf");
+                // Return the PDF as a FileContentResult with "application/pdf" content type
+                return Content(html, "text/html");
             }
         }
 
         [HttpPost]
-        public IActionResult print(string templateName, string[] selectedIds, string pageOrientation)
+        public ActionResult print(string templateName, string[] selectedIds, string pageOrientation)
         {
             foreach (var item in selectedIds)
             {
                 string[] finalValuesfromGrid = item.Split('|');
                 finalValuesfromGrid = finalValuesfromGrid.Where(value => !string.IsNullOrWhiteSpace(value)).ToArray();
 
-                Dictionary<string,string> attributesDictionary = new Dictionary<string,string>();
+                Dictionary<string, string> attributesDictionary = new Dictionary<string, string>();
                 foreach (string str in finalValuesfromGrid)
                 {
                     string[] parts = str.Split('=');
@@ -295,9 +314,11 @@ namespace Template.Controllers
                     string html = System.IO.File.ReadAllText(filePath);
                     string filePathtemplatePassword = _webHostEnvironment.WebRootPath + $"/TemplateSavedPasswords/{templateName}.txt";
                     string passwordTemplateData = string.Empty;
+                    string templateRawPwd = string.Empty;
                     if (System.IO.File.Exists(filePathtemplatePassword))
                     {
                         passwordTemplateData = System.IO.File.ReadAllText(filePathtemplatePassword);
+                        templateRawPwd = passwordTemplateData;
                     }
 
                     foreach (var attr in attributesDictionary)
@@ -322,14 +343,154 @@ namespace Template.Controllers
 
                     char[] charsToTrim = { '_', '-', ' ' };
                     string finalPwdPattern = passwordTemplateData.TrimEnd(charsToTrim);
-                    HTMLToPDF htmltoPdf = new HTMLToPDF();
+                   // HTMLToPDF htmltoPdf = new HTMLToPDF();
+                    string emailId = attributesDictionary["${Email Id}"];
+                    _pdfGenerator.GeneratorPdf(html, @"D:\Data\Official\TMI\LetterGeneratorPdfs", fileName + "_" + templateName, 
+                        pageOrientation, finalPwdPattern, emailId);
 
-                    htmltoPdf.converthtmlTOPDF(html, "C:\\Users\\LENOVO\\Documents\\Bandicam", fileName + "_" + templateName, pageOrientation, finalPwdPattern);
+
+                    if (!string.IsNullOrEmpty(finalPwdPattern))
+                    {
+                        //Thread.Sleep(5000);
+                        _pdfGenerator.setPassword(@$"D:\Data\Official\TMI\LetterGeneratorPdfs\{fileName + "_" + templateName}", finalPwdPattern, emailId, templateRawPwd);
+                        System.IO.File.Delete(@$"D:\Data\Official\TMI\LetterGeneratorPdfs\{fileName + "_" + templateName}" + ".pdf");
+                    }
+                    else
+                    {
+                        EmailSender emailSender = new EmailSender();
+                        emailSender.SendEmail(emailId, "No Password for PDF File", @$"D:\Data\Official\TMI\LetterGeneratorPdfs\{fileName + "_" + templateName}" + ".pdf");
+                        System.IO.File.Delete(@$"D:\Data\Official\TMI\LetterGeneratorPdfs\{fileName + "_" + templateName}" + ".pdf");
+                    }
                 }
 
             }
             ViewBag.SuccessMessage = "Pdf files Successfully generated..!";
-            return View();
+            return Content(ViewBag.SuccessMessage, "text/plain");
+        }
+
+        [HttpPost]
+        public ActionResult editModulePrint(string templateName, string htmlContentFromEditModule, string[] selectedIds)
+        {
+            string[] finalValuesfromGrid = selectedIds[0].Split('|');
+            finalValuesfromGrid = finalValuesfromGrid.Where(value => !string.IsNullOrWhiteSpace(value)).ToArray();
+
+            Dictionary<string, string> attributesDictionary = new Dictionary<string, string>();
+            foreach (string str in finalValuesfromGrid)
+            {
+                string[] parts = str.Split('=');
+                string key = parts[0].Trim();
+                string value = parts[1].Trim();
+                if (!string.IsNullOrEmpty(key) && !string.IsNullOrEmpty(value))
+                {
+                    attributesDictionary.Add(key, value);
+                }
+
+            }
+            string emailId = attributesDictionary["${Email Id}"];
+            string filePathtemplatePassword = _webHostEnvironment.WebRootPath + $"/TemplateSavedPasswords/{templateName}.txt";
+            string passwordTemplateData = string.Empty;
+            string templateRawPwd = string.Empty;
+            if (System.IO.File.Exists(filePathtemplatePassword))
+            {
+                passwordTemplateData = System.IO.File.ReadAllText(filePathtemplatePassword);
+                templateRawPwd = passwordTemplateData;
+            }
+            foreach (var attr in attributesDictionary)
+            {
+                if (System.IO.File.Exists(filePathtemplatePassword))
+                {
+                    if (passwordTemplateData.Contains(attr.Key))
+                    {
+                        passwordTemplateData = passwordTemplateData.Replace(attr.Key, attr.Value);
+                    }
+                }
+                if (htmlContentFromEditModule.Contains(attr.Key))
+                {
+                    htmlContentFromEditModule = htmlContentFromEditModule.Replace(attr.Key, attr.Value);
+                }
+            }
+            List<string> options = GetOptions();
+            foreach (string option in options)
+            {
+                passwordTemplateData = passwordTemplateData.Replace(option, string.Empty);
+            }
+            char[] charsToTrim = { '_', '-', ' ' };
+            string finalPwdPattern = passwordTemplateData.TrimEnd(charsToTrim);
+
+            string fileName = attributesDictionary["${Letter Date}"] + attributesDictionary["${EMP First Name}"] + attributesDictionary["${EMP Middle Name}"]
+                        + attributesDictionary["${EMP Last Name}"] + attributesDictionary["${Employee ID/Code}"];
+
+            _pdfGenerator.GeneratorPdf(htmlContentFromEditModule, @"D:\Data\Official\TMI\LetterGeneratorPdfs", fileName + "_" + templateName,
+                "", finalPwdPattern, emailId);
+
+
+            if (!string.IsNullOrEmpty(finalPwdPattern))
+            {
+                //Thread.Sleep(5000);
+                _pdfGenerator.setPassword(@$"D:\Data\Official\TMI\LetterGeneratorPdfs\{fileName + "_" + templateName}", finalPwdPattern, emailId, templateRawPwd);
+            }
+            else
+            {
+                EmailSender emailSender = new EmailSender();
+                emailSender.SendEmail(emailId, "No Password for PDF File", @$"D:\Data\Official\TMI\LetterGeneratorPdfs\{fileName + "_" + templateName}" + ".pdf");
+            }
+
+            return Json(new { success = true });
+        }
+        public ActionResult templateEditor(string templateName, string[] selectedIds)
+        {
+            string html = string.Empty;
+            foreach (var item in selectedIds)
+            {
+                string[] finalValuesfromGrid = item.Split('|');
+                finalValuesfromGrid = finalValuesfromGrid.Where(value => !string.IsNullOrWhiteSpace(value)).ToArray();
+
+                Dictionary<string, string> attributesDictionary = new Dictionary<string, string>();
+                foreach (string str in finalValuesfromGrid)
+                {
+                    string[] parts = str.Split('=');
+                    string key = parts[0].Trim();
+                    string value = parts[1].Trim();
+                    if (!string.IsNullOrEmpty(key) && !string.IsNullOrEmpty(value))
+                    {
+                        attributesDictionary.Add(key, value);
+                    }
+
+                }
+                if (attributesDictionary.Count != 0)
+                {
+                    string fileName = attributesDictionary["${Letter Date}"] + attributesDictionary["${EMP First Name}"] + attributesDictionary["${EMP Middle Name}"]
+                        + attributesDictionary["${EMP Last Name}"] + attributesDictionary["${Employee ID/Code}"];
+
+                    var filePath = _webHostEnvironment.WebRootPath + $"/Templates/{templateName}.html";
+                    html = System.IO.File.ReadAllText(filePath);
+                    string filePathtemplatePassword = _webHostEnvironment.WebRootPath + $"/TemplateSavedPasswords/{templateName}.txt";
+                    string passwordTemplateData = string.Empty;
+                    string templateRawPwd = string.Empty;
+                    if (System.IO.File.Exists(filePathtemplatePassword))
+                    {
+                        passwordTemplateData = System.IO.File.ReadAllText(filePathtemplatePassword);
+                        templateRawPwd = passwordTemplateData;
+                    }
+
+                    foreach (var attr in attributesDictionary)
+                    {
+                        if (System.IO.File.Exists(filePathtemplatePassword))
+                        {
+                            if (passwordTemplateData.Contains(attr.Key))
+                            {
+                                passwordTemplateData = passwordTemplateData.Replace(attr.Key, attr.Value);
+                            }
+                        }
+                        if (html.Contains(attr.Key))
+                        {
+                            html = html.Replace(attr.Key, attr.Value);
+                        }
+                    }                   
+                }
+
+            }
+            return Content(html, "text/html");
         }
 
         [HttpPost]
@@ -341,43 +502,7 @@ namespace Template.Controllers
         }
         public IActionResult PrintPreview(string templateName)
         {
-            var filePath = _webHostEnvironment.WebRootPath + $"/Templates/{templateName}.html";
-            string html = System.IO.File.ReadAllText(filePath);
-            using (MemoryStream memoryStream = new MemoryStream())
-            {
-                ConverterProperties converterProperties = new ConverterProperties();
-                HtmlConverter.ConvertToPdf(html, memoryStream, converterProperties);
-
-                byte[] bytes = memoryStream.ToArray();
-
-                return new FileContentResult(bytes, "application/pdf");
-            }
-        }
-
-        public IActionResult ngxQuill(string ModuleName)
-        {
-            //Set the ViewBag to the ModuleName
-            ViewBag.TemplatePath = ModuleName;
-
-            //Create a string to store the path of the templates
-            string templatePath = Path.Combine(_webHostEnvironment.WebRootPath, "Templates");
-            //Set the ViewBag to the list of files in the template path
-            string[] listOfTemplates = Directory.EnumerateFiles(templatePath, "*", SearchOption.AllDirectories).ToArray();
-            ViewBag.ListOfTemplates = listOfTemplates;
-            if (String.IsNullOrEmpty(ModuleName))
-            {
-                ViewBag.TemplatePath = Path.GetFileNameWithoutExtension(listOfTemplates[0]);
-            }
-            //Return the view
-            return View();
-        }
-        [HttpPost]
-        public IActionResult ngxQuill(string content, string templateName, string Modulename)
-        {
-            var filePath = _webHostEnvironment.WebRootPath + $"/Templates/{templateName}.html";
-            System.IO.File.WriteAllText(filePath, content);
-            ViewBag.TemplatePath = Modulename;
-            return View();
+            return null;
         }
 
         public ActionResult SetPassword(string templateName)
@@ -385,45 +510,20 @@ namespace Template.Controllers
 
             var filePath = _webHostEnvironment.WebRootPath + $"/Templates/{templateName}.html";
             string html = System.IO.File.ReadAllText(filePath);
-
             List<string> options = GetOptions();
-
-
-            //string pattern = @"\${(.*?)}";
-            //MatchCollection matches = Regex.Matches(html, pattern);
-            //foreach (Match match in matches)
-            //{
-            //    string value = match.Groups[1].Value;
-            //    options.Add("${" + value + "}");
-            //}
             return Json(options);
         }
 
         public List<string> GetOptions()
         {
             List<string> options = new List<string>
-                     {
-                         "${Letter Date}",
+                     {                         
                          "${EMP First Name}",
                          "${EMP Middle Name}",
                          "${EMP Last Name}",
                          "${Employee ID/Code}",
-                         "${DOC}",
-                         "${DOJYear}",
                          "${DOJ}",
-                         "${Designation}",
-                         "${RCS Grade}",
-                         "${Monthly Basic}",
-                         "${Monthly Special}",
-                         "${Annual Wage Supplement Monthly}",
-                         "${Annual Base Salary Monthly}",
-                         "${New Basic}",
-                         "${New Special}",
-                         "${Annual Wage Supplement}",
-                         "${Annual Base Salary}",
-                         "${Address}",
-                         "${Target Bonus}",
-                         "${New PF}",
+                         "${DOB}",
                          "${Pan Number}"
                      };
             return options;
