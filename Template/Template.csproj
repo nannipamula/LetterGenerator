@@ -27,6 +27,7 @@
 
   <ItemGroup>
     <Folder Include="wwwroot\lineheight\" />
+    <Folder Include="wwwroot\LetterGeneratorPdfs\" />
     <Folder Include="wwwroot\TemplateSavedPasswords\" />
     <Folder Include="wwwroot\TemplateSavedPasswords\" />
     <Folder Include="wwwroot\uploads\" />

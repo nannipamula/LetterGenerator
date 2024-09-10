@@ -25,6 +25,7 @@ using System.Threading.Tasks;
 using System.Web;
 using Template.Models;
 using Template.Services;
+using Microsoft.AspNetCore.Rewrite;
 //using Document = iTextSharp.text.Document;
 
 namespace Template.Controllers
@@ -51,6 +52,7 @@ namespace Template.Controllers
             None
         }
 
+        
         //This code is used to get the index view of a module.
         [HttpGet]
         public IActionResult Index(string ModuleName)
@@ -288,6 +290,8 @@ namespace Template.Controllers
         [HttpPost]
         public ActionResult print(string templateName, string[] selectedIds, string pageOrientation)
         {
+            MemoryStream memoryStream = new MemoryStream();
+            string pdfPath = string.Empty;
             foreach (var item in selectedIds)
             {
                 string[] finalValuesfromGrid = item.Split('|');
@@ -303,8 +307,8 @@ namespace Template.Controllers
                     {
                         attributesDictionary.Add(key, value);
                     }
-
                 }
+
                 if (attributesDictionary.Count != 0)
                 {
                     string fileName = attributesDictionary["${Letter Date}"] + attributesDictionary["${EMP First Name}"] + attributesDictionary["${EMP Middle Name}"]
@@ -335,6 +339,7 @@ namespace Template.Controllers
                             html = html.Replace(attr.Key, attr.Value);
                         }
                     }
+
                     List<string> options = GetOptions();
                     foreach (string option in options)
                     {
@@ -343,34 +348,66 @@ namespace Template.Controllers
 
                     char[] charsToTrim = { '_', '-', ' ' };
                     string finalPwdPattern = passwordTemplateData.TrimEnd(charsToTrim);
-                   // HTMLToPDF htmltoPdf = new HTMLToPDF();
                     string emailId = attributesDictionary["${Email Id}"];
-                    _pdfGenerator.GeneratorPdf(html, @"D:\Data\Official\TMI\LetterGeneratorPdfs", fileName + "_" + templateName, 
-                        pageOrientation, finalPwdPattern, emailId);
 
+                    // Save PDF to file
+                    pdfPath = Path.Combine(_webHostEnvironment.WebRootPath, "LetterGeneratorPdfs", $"{fileName}_{templateName}.pdf.pdf");
+                    _pdfGenerator.GeneratorPdf(
+                                                html,
+                                                Path.Combine(_webHostEnvironment.WebRootPath, "LetterGeneratorPdfs"),
+                                                $"{fileName}_{templateName}.pdf",
+                                                pageOrientation,
+                                                finalPwdPattern,
+                                                emailId
+                                            );
 
                     if (!string.IsNullOrEmpty(finalPwdPattern))
                     {
-                        //Thread.Sleep(5000);
-                        _pdfGenerator.setPassword(@$"D:\Data\Official\TMI\LetterGeneratorPdfs\{fileName + "_" + templateName}", finalPwdPattern, emailId, templateRawPwd);
-                        System.IO.File.Delete(@$"D:\Data\Official\TMI\LetterGeneratorPdfs\{fileName + "_" + templateName}" + ".pdf");
+                        _pdfGenerator.setPassword(
+                                                    pdfPath,
+                                                    finalPwdPattern,
+                                                    emailId,
+                                                    templateRawPwd
+                                                );
+
+                        //System.IO.File.Delete(pdfPath);
                     }
                     else
                     {
-                        EmailSender emailSender = new EmailSender();
-                        emailSender.SendEmail(emailId, "No Password for PDF File", @$"D:\Data\Official\TMI\LetterGeneratorPdfs\{fileName + "_" + templateName}" + ".pdf");
-                        System.IO.File.Delete(@$"D:\Data\Official\TMI\LetterGeneratorPdfs\{fileName + "_" + templateName}" + ".pdf");
+                        //EmailSender emailSender = new EmailSender();
+                        //emailSender.SendEmail(
+                        //                        emailId,
+                        //                        "No Password for PDF File",
+                        //                        pdfPath
+                        //                     );
+                    }
+
+                    // Read the PDF into memory to return it for download
+                    using (var fileStream = new FileStream(pdfPath, FileMode.Open, FileAccess.Read))
+                    {
+                        fileStream.CopyTo(memoryStream);
                     }
                 }
-
             }
-            ViewBag.SuccessMessage = "Pdf files Successfully generated..!";
-            return Content(ViewBag.SuccessMessage, "text/plain");
+
+            memoryStream.Position = 0; // Reset the stream position to the beginning before returning it
+            var finalResult = File(memoryStream, "application/pdf", $"{templateName}_{DateTime.UtcNow}.pdf");
+
+            if (System.IO.File.Exists(pdfPath))
+            {
+                System.IO.File.Delete(pdfPath);
+            }
+
+            return finalResult;
         }
+
+        
+
 
         [HttpPost]
         public ActionResult editModulePrint(string templateName, string htmlContentFromEditModule, string[] selectedIds)
         {
+            MemoryStream memoryStream = new MemoryStream();
             string[] finalValuesfromGrid = selectedIds[0].Split('|');
             finalValuesfromGrid = finalValuesfromGrid.Where(value => !string.IsNullOrWhiteSpace(value)).ToArray();
 
@@ -420,22 +457,47 @@ namespace Template.Controllers
             string fileName = attributesDictionary["${Letter Date}"] + attributesDictionary["${EMP First Name}"] + attributesDictionary["${EMP Middle Name}"]
                         + attributesDictionary["${EMP Last Name}"] + attributesDictionary["${Employee ID/Code}"];
 
-            _pdfGenerator.GeneratorPdf(htmlContentFromEditModule, @"D:\Data\Official\TMI\LetterGeneratorPdfs", fileName + "_" + templateName,
-                "", finalPwdPattern, emailId);
+            _pdfGenerator.GeneratorPdf(
+                                        htmlContentFromEditModule,
+                                        Path.Combine(_webHostEnvironment.WebRootPath, "LetterGeneratorPdfs"),
+                                        $"{fileName}_{templateName}.pdf", // Ensure the file name has a .pdf extension
+                                        "",
+                                        finalPwdPattern,
+                                        emailId
+                                      );
+
 
 
             if (!string.IsNullOrEmpty(finalPwdPattern))
             {
                 //Thread.Sleep(5000);
-                _pdfGenerator.setPassword(@$"D:\Data\Official\TMI\LetterGeneratorPdfs\{fileName + "_" + templateName}", finalPwdPattern, emailId, templateRawPwd);
+                _pdfGenerator.setPassword(
+                                            Path.Combine(_webHostEnvironment.WebRootPath, "LetterGeneratorPdfs", $"{fileName}_{templateName}.pdf"),
+                                            finalPwdPattern,
+                                            emailId,
+                                            templateRawPwd
+                                         );
+
             }
             else
             {
-                EmailSender emailSender = new EmailSender();
-                emailSender.SendEmail(emailId, "No Password for PDF File", @$"D:\Data\Official\TMI\LetterGeneratorPdfs\{fileName + "_" + templateName}" + ".pdf");
+                //EmailSender emailSender = new EmailSender();
+                //emailSender.SendEmail(emailId, "No Password for PDF File", Path.Combine(_webHostEnvironment.WebRootPath,"LetterGeneratorPdfs",$"{fileName}_{templateName}.pdf"));
+            }
+            string pdfPath = Path.Combine(_webHostEnvironment.WebRootPath, "LetterGeneratorPdfs", $"{fileName}_{templateName}.pdf.pdf");
+            using (var fileStream = new FileStream(pdfPath, FileMode.Open, FileAccess.Read))
+            {
+                fileStream.CopyTo(memoryStream);
+            }
+            memoryStream.Position = 0; // Reset the stream position to the beginning before returning it
+            var finalResult = File(memoryStream, "application/pdf", $"{templateName}_{DateTime.UtcNow}.pdf");
+
+            if (System.IO.File.Exists(pdfPath))
+            {
+                System.IO.File.Delete(pdfPath);
             }
 
-            return Json(new { success = true });
+            return finalResult;
         }
         public ActionResult templateEditor(string templateName, string[] selectedIds)
         {
