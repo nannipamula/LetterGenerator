@@ -13,7 +13,13 @@
     <script src="~/js/plugin.js"></script>
 </head>
 <style>
-
+    body {
+        font-family: 'Roboto', sans-serif; /* Enhancing font to a modern, clean look */
+        background-color: #99aabb; /* Light background to keep things subtle */
+        color: #333;
+        margin: 0;
+        padding: 0;
+}
     #loader {
         position: fixed;
         top: 0;
@@ -228,7 +234,7 @@
     <div id="overlay" class="overlay"></div>
     <div id="editorModal" class="modal2" style="display: none; width: 1226px;">
         <div class="modal-content" style="margin-top: -14px;width: 1182px;">
-            <a id="myLink" onclick="doPrintfromEditModule(this,'@Url.Action("editModulePrint","Home")')"><img src="~/icons/pdf.png" style="height: 37px;" /></a>
+            <a id="myLink" onclick="doPrintfromEditModule(this,'@Url.Action("editModulePrint","Home")')">@* <img src="~/icons/pdf.png" style="height: 37px;" />*@</a>
             <span class="close">&times;</span>
             <div id="ckeditorContainer"><textarea id="editorfor"> </textarea></div>
 
@@ -237,30 +243,47 @@
     <form id="myForm" method="post" enctype="multipart/form-data">
         <input type="file" id="fileInput" name="fileInput" style="margin-top: 13px;width: 235px;margin-left: 32px; display:none">
         <button type="submit" class="btn-primary" style="margin-top: 11px;margin-left: -6px; display:none">Upload</button>
-        <label style="margin-left: 453px;">Select TemplateName: </label>
-        <label style="margin-left: -574px;">Page Orientation: </label>
-        <select class="form-control" type="text" id="ModuleName" name="ModuleName" style="margin-top: -34px;margin-left: 625px;width: 251px;">
-            @if (ViewBag.ListOfTemplates != null)
-            {
-                @foreach (var item in ViewBag.ListOfTemplates)
-                {
-                    string fileName = System.IO.Path.GetFileNameWithoutExtension(item);
-                    string passwordFilePath = $@"wwwroot\TemplateSavedPasswords\{fileName}.txt";
+        <div class="container">
+            <div class="row mb-3">
+                <div class="col-md-4 d-flex justify-content-end align-items-center">
+                    <label for="pageOrientation" class="me-2">Page Orientation: </label>
+                </div>
+                <div class="col-md-8">
+                    <select class="form-control" type="text" id="pageOrientation" name="pageOrientation" style="width: 316px;">
+                        <option>Portrait</option>
+                        <option>Landscape</option>
+                    </select>
+                </div>
+            </div>
 
-                    if (System.IO.File.Exists(passwordFilePath))
-                    {
-                        <option value="@fileName" data-has-password="true" style="color:green">@fileName (password set)</option>
-                    }
-                    else
-                    {
-                        <option value="@fileName" data-has-password="false" style="color:brown">@fileName (password not set)</option>
-                    }
-                }}
-        </select>
-        <select class="form-control" type="text" id="pageOrientation" name="pageOrientation" style="margin-top: -38px;margin-left: 180px;width: 251px;">
-            <option>Portrait</option>
-            <option>Landscape</option>
-        </select>
+            <div class="row mb-3">
+                <div class="col-md-4 d-flex justify-content-end align-items-center">
+                    <label for="ModuleName" class="me-2">Select TemplateName: </label>
+                </div>
+                <div class="col-md-8">
+                    <select class="form-control" type="text" id="ModuleName" name="ModuleName" style="width: 316px;">
+                        @if (ViewBag.ListOfTemplates != null)
+                        {
+                            @foreach (var item in ViewBag.ListOfTemplates)
+                            {
+                                string fileName = System.IO.Path.GetFileNameWithoutExtension(item);
+                                string passwordFilePath = $@"wwwroot\TemplateSavedPasswords\{fileName}.txt";
+
+                                if (System.IO.File.Exists(passwordFilePath))
+                                {
+                                    <option value="@fileName" data-has-password="true" style="color:green">@fileName (password set)</option>
+                                }
+                                else
+                                {
+                                    <option value="@fileName" data-has-password="false" style="color:brown">@fileName (password not set)</option>
+                                }
+                            }
+                        }
+                    </select>
+                </div>
+            </div>
+        </div>
+
         <a id="print-all-link" onclick="doPrint(this,'@Url.Action("print","Home")')"><img src="~/icons/print.jpg" style="height: 37px;margin-left: 907px;" />Create Pdf</a>
 
 
@@ -308,9 +331,9 @@
                 <tbody>
                     <tr>
                         <td>
-                            <a id="myLink" class="pdf-link" onclick="doIt(this,'@Url.Action("pdf", "Home")')"><img src="~/icons/view.jpg" style="height: 31px;" /></a> |
-                            <a id="myLink" class="print-link" onclick="doPrint(this,'@Url.Action("print","Home")')"><img src="~/icons/pdf.png" style="height: 37px;" /></a> |
-                            <a id="myLink" class="editor-link" onclick="editTemplate(this,'@Url.Action("templateEditor","Home")')"><img src="~/icons/edit-icon-png-3598.png" style="height: 37px;" /></a>
+                            <a id="myLink" class="pdf-link" onclick="doIt(this,'@Url.Action("pdf", "Home")')"><img src="~/icons/v.png" style="height: 31px;" /></a> |
+                            <a id="myLink" class="print-link" onclick="doPrint(this,'@Url.Action("print","Home")')"><img src="~/icons/p.png" style="height: 37px;" /></a> |
+                            <a id="myLink" class="editor-link" onclick="editTemplate(this,'@Url.Action("templateEditor","Home")')"><img src="~/icons/e.png" style="height: 37px;" /></a>
                         </td>
                         <td><input type="checkbox" name="chkSelected" value="1" /></td>
                         <td contentEditable="true">
@@ -357,9 +380,9 @@
 
                     <tr>
                         <td>
-                            <a id="myLink" class="pdf-link" onclick="doIt(this,'@Url.Action("pdf", "Home")')"><img src="~/icons/view.jpg" style="height: 31px;" /></a> |
-                            <a id="myLink" class="print-link" onclick="doPrint(this,'@Url.Action("print","Home")')"><img src="~/icons/pdf.png" style="height: 37px;" /></a> |
-                            <a id="myLink" class="editor-link" onclick="editTemplate(this,'@Url.Action("templateEditor","Home")')"><img src="~/icons/edit-icon-png-3598.png" style="height: 37px;" /></a>
+                            <a id="myLink" class="pdf-link" onclick="doIt(this,'@Url.Action("pdf", "Home")')"><img src="~/icons/v.png" style="height: 31px;" /></a> |
+                            <a id="myLink" class="print-link" onclick="doPrint(this,'@Url.Action("print","Home")')"><img src="~/icons/p.png" style="height: 37px;" /></a> |
+                            <a id="myLink" class="editor-link" onclick="editTemplate(this,'@Url.Action("templateEditor","Home")')"><img src="~/icons/e.png" style="height: 37px;" /></a>
                         </td>
                         <td><input type="checkbox" name="chkSelected" value="2" /></td>
                         <td contentEditable="true">
@@ -404,9 +427,9 @@
 
                     <tr>
                         <td>
-                            <a id="myLink" class="pdf-link" onclick="doIt(this,'@Url.Action("pdf", "Home")')"><img src="~/icons/view.jpg" style="height: 31px;" /></a> |
-                            <a id="myLink" class="print-link" onclick="doPrint(this,'@Url.Action("print","Home")')"><img src="~/icons/pdf.png" style="height: 37px;" /></a> |
-                            <a id="myLink" class="editor-link" onclick="editTemplate(this,'@Url.Action("templateEditor","Home")')"><img src="~/icons/edit-icon-png-3598.png" style="height: 37px;" /></a>
+                            <a id="myLink" class="pdf-link" onclick="doIt(this,'@Url.Action("pdf", "Home")')"><img src="~/icons/v.png" style="height: 31px;" /></a> |
+                            <a id="myLink" class="print-link" onclick="doPrint(this,'@Url.Action("print","Home")')"><img src="~/icons/p.png" style="height: 37px;" /></a> |
+                            <a id="myLink" class="editor-link" onclick="editTemplate(this,'@Url.Action("templateEditor","Home")')"><img src="~/icons/e.png" style="height: 37px;" /></a>
                         </td>
                         <td><input type="checkbox" name="chkSelected" value="" /></td>
                         <td contentEditable="true">
@@ -451,9 +474,9 @@
 
                     <tr>
                         <td>
-                            <a id="myLink" class="pdf-link" onclick="doIt(this,'@Url.Action("pdf", "Home")')"><img src="~/icons/view.jpg" style="height: 31px;" /></a> |
-                            <a id="myLink" class="print-link" onclick="doPrint(this,'@Url.Action("print","Home")')"><img src="~/icons/pdf.png" style="height: 37px;" /></a> |
-                            <a id="myLink" class="editor-link" onclick="editTemplate(this,'@Url.Action("templateEditor","Home")')"><img src="~/icons/edit-icon-png-3598.png" style="height: 37px;" /></a>
+                            <a id="myLink" class="pdf-link" onclick="doIt(this,'@Url.Action("pdf", "Home")')"><img src="~/icons/v.png" style="height: 31px;" /></a> |
+                            <a id="myLink" class="print-link" onclick="doPrint(this,'@Url.Action("print","Home")')"><img src="~/icons/p.png" style="height: 37px;" /></a> |
+                            <a id="myLink" class="editor-link" onclick="editTemplate(this,'@Url.Action("templateEditor","Home")')"><img src="~/icons/e.png" style="height: 37px;" /></a>
                         </td>
                         <td><input type="checkbox" name="chkSelected" value="" /></td>
                         <td contentEditable="true">
@@ -498,9 +521,9 @@
 
                     <tr>
                         <td>
-                            <a id="myLink" class="pdf-link" onclick="doIt(this,'@Url.Action("pdf", "Home")')"><img src="~/icons/view.jpg" style="height: 31px;" /></a> |
-                            <a id="myLink" class="print-link" onclick="doPrint(this,'@Url.Action("print","Home")')"><img src="~/icons/pdf.png" style="height: 37px;" /></a> |
-                            <a id="myLink" class="editor-link" onclick="editTemplate(this,'@Url.Action("templateEditor","Home")')"><img src="~/icons/edit-icon-png-3598.png" style="height: 37px;" /></a>
+                            <a id="myLink" class="pdf-link" onclick="doIt(this,'@Url.Action("pdf", "Home")')"><img src="~/icons/v.png" style="height: 31px;" /></a> |
+                            <a id="myLink" class="print-link" onclick="doPrint(this,'@Url.Action("print","Home")')"><img src="~/icons/p.png" style="height: 37px;" /></a> |
+                            <a id="myLink" class="editor-link" onclick="editTemplate(this,'@Url.Action("templateEditor","Home")')"><img src="~/icons/e.png" style="height: 37px;" /></a>
                         </td>
                         <td><input type="checkbox" name="chkSelected" value="" /></td>
                         <td contentEditable="true">
@@ -545,9 +568,9 @@
 
                     <tr>
                         <td>
-                            <a id="myLink" class="pdf-link" onclick="doIt(this,'@Url.Action("pdf", "Home")')"><img src="~/icons/view.jpg" style="height: 31px;" /></a> |
-                            <a id="myLink" class="print-link" onclick="doPrint(this,'@Url.Action("print","Home")')"><img src="~/icons/pdf.png" style="height: 37px;" /></a> |
-                            <a id="myLink" class="editor-link" onclick="editTemplate(this,'@Url.Action("templateEditor","Home")')"><img src="~/icons/edit-icon-png-3598.png" style="height: 37px;" /></a>
+                            <a id="myLink" class="pdf-link" onclick="doIt(this,'@Url.Action("pdf", "Home")')"><img src="~/icons/v.png" style="height: 31px;" /></a> |
+                            <a id="myLink" class="print-link" onclick="doPrint(this,'@Url.Action("print","Home")')"><img src="~/icons/p.png" style="height: 37px;" /></a> |
+                            <a id="myLink" class="editor-link" onclick="editTemplate(this,'@Url.Action("templateEditor","Home")')"><img src="~/icons/e.png" style="height: 37px;" /></a>
                         </td>
                         <td><input type="checkbox" name="chkSelected" value="" /></td>
                         <td contentEditable="true">
@@ -825,7 +848,16 @@
             },
             success: function (data) {
                 document.getElementById("loader").style.display = "none";
-                alert('Pdf files successfully generated...!');
+                // alert(data);
+
+                // Send a POST request for downloading the file
+                let form = $('<form action="@Url.Action("print", "Home")" method="POST" target="_blank"></form>');
+                form.append('<input type="hidden" name="templateName" value="' + selectedValue + '" />');
+                form.append('<input type="hidden" name="selectedIds" value="' + selectedIds.join(',') + '" />');
+                form.append('<input type="hidden" name="pageOrientation" value="' + pageOrientation + '" />');
+                $('body').append(form);
+                form.submit(); // Trigger the form to open the download link
+                form.remove();
 
             },
             error: function (xhr, textStatus, errorThrown) {
@@ -869,13 +901,24 @@
             },
             success: function (data) {
                 document.getElementById("loader").style.display = "none";
-                alert(data);
+                // alert(data);
 
+                // Send a POST request for downloading the file
+                let form = $('<form action="@Url.Action("print", "Home")" method="POST" target="_blank"></form>');
+                form.append('<input type="hidden" name="templateName" value="' + selectedValue + '" />');
+                form.append('<input type="hidden" name="selectedIds" value="' + selectedIds.join(',') + '" />');
+                form.append('<input type="hidden" name="pageOrientation" value="' + pageOrientation + '" />');
+                $('body').append(form);
+                form.submit(); // Trigger the form to open the download link
+                form.remove();
             },
             error: function (xhr, textStatus, errorThrown) {
                 document.getElementById("loader").style.display = "none";
+                alert("Error occurred while generating the PDF");
             }
         });
+
+
 
     }
 

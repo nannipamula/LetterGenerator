@@ -3,99 +3,125 @@
 <head>
     <meta charset="utf-8" />
     <title></title>
-    <link href="~/css/site.css" rel="stylesheet" />
-    <script src="~/lib/jquery/dist/jquery.js"></script>
-    <script src="~/js/ckeditor/ckeditor.js"></script>
-    <link href="~/lib/bootstrap/dist/css/bootstrap.min.css" rel="stylesheet" />
+   <link href="~/css/site.css" rel="stylesheet" />
+<script src="~/lib/jquery/dist/jquery.js"></script>
+<script src="~/js/ckeditor/ckeditor.js"></script>
+<link href="~/lib/bootstrap/dist/css/bootstrap.min.css" rel="stylesheet" />
 
+<!-- Add Google Font -->
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
 
-    <link href="~/css/site.css" rel="stylesheet" />
-    <script src="~/js/plugin.js"></script>
-    <style>
+<style>
+    /* General Body Styling */
+    body {
+        font-family: 'Roboto', sans-serif; /* Enhancing font to a modern, clean look */
+        background-color: #99aabb; /* Light background to keep things subtle */
+        color: #333;
+        margin: 0;
+        padding: 0;
+    }
 
-        #cke_editor {
-            border: inset;
-            margin-left: 2px;
-            width: 1091px;
-            margin-top: -627px;
-        }
+    /* Header Container Styles */
+    .header-container {
+        background-color: #3498db; /* Blue color for the header */
+        padding: 20px;
+        margin-bottom: 20px;
+        border-radius: 8px;
+        color: #fff;
+    }
 
-        option[data-has-password="true"] {
-            color: green;
-        }
+    .header-container h1 {
+        font-size: 32px;
+        font-weight: bold;
+    }
 
-        option[data-has-password="false"] {
-            color: brown;
-        }
+    .header-container p {
+        font-size: 16px;
+    }
 
-        #suggestionsList {
-            position: absolute;
-            display: none;
-            list-style-type: none;
-            background-color: #f9f9f9;
-            border: 1px solid #ccc;
-            padding: 5px;
-        }
+    /* CKEditor */
+    #cke_editor {
+        border: 1px solid #ddd;
+        margin-left: 2px;
+        width: 1091px;
+        margin-top: -627px;
+    }
 
-            #suggestionsList li {
-                cursor: pointer;
-                padding: 3px;
-            }
+    /* Dropdown Option Styles */
+    option[data-has-password="true"] {
+        color: green; /* No change to the green color */
+    }
 
-                #suggestionsList li:hover {
-                    background-color: #e3e3e3;
-                }
+    option[data-has-password="false"] {
+        color: brown; /* No change to the brown color */
+    }
 
+    /* Suggestions List */
+    #suggestionsList {
+        position: absolute;
+        display: none;
+        list-style-type: none;
+        background-color: #fff; /* White background for contrast */
+        border: 1px solid #ccc;
+        padding: 5px;
+        z-index: 1000;
+        box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.1);
+    }
+
+    #suggestionsList li {
+        cursor: pointer;
+        padding: 8px;
+    }
+
+    #suggestionsList li:hover {
+        background-color: #e3e3e3;
+    }
+
+    /* Form Container */
+    .form-container {
+        display: flex;
+        justify-content: space-between;
+        margin-bottom: 20px;
+    }
+
+    .form-container form {
+        width: 48%; /* Maintain existing width */
+    }
+
+    /* Footer Styles */
+    .footer {
+        background-color: #34495e; /* Keep the footer dark blue */
+        color: #ecf0f1; /* White text for contrast */
+        text-align: center;
+        padding: 20px;
+        margin-top: 20px;
+    }
+
+    .footer p {
+        font-size: 16px;
+        margin: 0;
+    }
+
+    /* Disabled Option Styling */
+    .disabled-option {
+        background-color: #f2f2f2; /* Light grey background */
+        color: #555; /* Maintain readability */
+    }
+
+    /* Responsive Adjustments */
+    @@media screen and (max-width: 767px) {
         .form-container {
-            display: flex;
-            justify-content: space-between;
+            flex-direction: column;
+            margin-bottom: 0;
         }
 
-            .form-container form {
-                width: 48%; /* Adjust the width as needed */
-            }
-
-
-        /* Header Container Styles */
-        .header-container {
-            background-color: #2ecc71; /* Green background color */
-            padding: 20px;
-            margin: 20px;
-            border-radius: 10px; /* Rounded corners for the container */
+        .form-container form {
+            width: 100%;
         }
+    }
 
-        /* Header Styles */
-        .header {
-            color: #fff;
-            text-align: center;
-        }
+</style>
 
-            .header h1 {
-                font-size: 36px;
-            }
-
-            .header p {
-                font-size: 18px;
-            }
-
-        /* Footer Styles */
-        .footer {
-            background-color: #34495e; /* Dark blue background color */
-            color: #fff;
-            text-align: center;
-            padding: 20px 0;
-        }
-
-            .footer p {
-                font-size: 18px;
-            }
-
-        .disabled-option {
-            background-color: #f2f2f2; /* Light grey background color */
-            color: #555; /* Darker text color for readability */
-        }
-
-    </style>
 </head>
 
 <body>
@@ -221,7 +247,7 @@
                 'Century Gothic;' + 'Franklin Gothic;' + 'Myriad;' + 'Optima;' + 'Rockwell;' +
                 'Univers;' + 'Eurostile;'
         });
-
+        
         $('#my-dropdown').on('change', function () {
             var selectedValue = $(this).val();
 
